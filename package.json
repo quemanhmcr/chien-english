@@ -10,14 +10,19 @@
   },
   "dependencies": {
     "@google/genai": "^1.33.0",
+    "@openrouter/sdk": "^0.3.10",
     "@supabase/supabase-js": "^2.89.0",
+    "framer-motion": "^12.23.26",
     "lucide-react": "^0.560.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "react-markdown": "^10.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "dotenv": "^17.2.3",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

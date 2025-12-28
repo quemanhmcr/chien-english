@@ -41,12 +41,25 @@ export interface EvaluationResult {
   explanation: string;
   isPass: boolean;
   improvedVersion?: string;
-  grammarPoints?: string[];
-  coachNote?: string;
   detailedAnalysis: AnalysisToken[];
   alternatives?: AlternativeOption[];
   keyTakeaway: string;
   relatedVocabulary?: VocabularyItem[];
+  // Role-play specific
+  rolePlayMetrics?: {
+    taskAchievement?: number;
+    coherence?: number;
+    lexicalResource?: number;
+    grammar?: number;
+  };
+  toneType?: 'Aggressive' | 'Blunt' | 'Casual' | 'Neutral' | 'Warm' | 'Polite' | 'Formal' | 'OverlyFormal';
+  toneValue?: number; // -100 (Rude) to 100 (Too Formal)
+  modelSentence?: string; // Model answer for comparison
+  suggestionPhrases?: string[]; // Suggested phrases to improve
+  // Detective specific
+  originalError?: string; // The original error segment
+  userCaughtError?: boolean; // Did user catch the right error?
+  verdict?: 'Case Closed' | 'Good Lead' | 'Wrong Suspect' | 'Cold Case'; // Detective verdict
 }
 
 export interface PronunciationWord {

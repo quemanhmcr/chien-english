@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Trophy, Settings, Flag, ArrowRight, Book, Star,
   ChevronLeft, LogOut, Search, Filter, TrendingUp, CheckCircle2,
-  Clock, Award, Sparkles, ChevronRight, MessageSquare
+  Clock, Award, Sparkles, ChevronRight, MessageSquare, Lightbulb
 } from 'lucide-react';
 import { AppState, EvaluationResult, Lesson, UserProfile as UserProfileType, UserProgress } from '../types';
 import { evaluateExercise } from '../services/mimoService';
@@ -35,8 +35,18 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [feedback, setFeedback] = useState<EvaluationResult | null>(null);
   const [sessionScore, setSessionScore] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('AI is investigating...');
+
+  const LOADING_MESSAGES = [
+    "Analyzing grammar structure...",
+    "Checking vocabulary usage...",
+    "Detecting 'Vietlish' patterns...",
+    "Measuring social tone...",
+    "Formulating pedagogical feedback..."
+  ];
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
 
   // Filtered lessons
   const filteredLessons = useMemo(() => {
@@ -95,10 +105,25 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
     }
   }, [appState, currentIndex]);
 
+  // Auto-scroll to feedback
+  useEffect(() => {
+    if (appState === AppState.FEEDBACK && feedbackRef.current) {
+      feedbackRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [appState]);
+
   const handleCheck = async () => {
     if (!userInput.trim() || !currentExercise) return;
 
     setAppState(AppState.EVALUATING);
+
+    // Cycle loading messages
+    let msgIdx = 0;
+    setLoadingMessage(LOADING_MESSAGES[0]);
+    const msgInterval = setInterval(() => {
+      msgIdx = (msgIdx + 1) % LOADING_MESSAGES.length;
+      setLoadingMessage(LOADING_MESSAGES[msgIdx]);
+    }, 1200);
 
     try {
       const result = await evaluateExercise(
@@ -107,7 +132,11 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         currentExercise.type || 'translation',
         (partial) => {
           setFeedback(partial);
-          setAppState(AppState.FEEDBACK);
+          // Only switch to FEEDBACK if we have some analysis to show
+          if (partial.detailedAnalysis && partial.detailedAnalysis.length > 0) {
+            setAppState(AppState.FEEDBACK);
+            clearInterval(msgInterval);
+          }
         }
       );
       setFeedback(result);
@@ -115,9 +144,11 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         setSessionScore(prev => prev + result.score);
       }
       setAppState(AppState.FEEDBACK);
+      clearInterval(msgInterval);
     } catch (error) {
       console.error(error);
       setAppState(AppState.ERROR);
+      clearInterval(msgInterval);
     }
   };
 
@@ -488,16 +519,13 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                         'bg-rose-50 text-rose-600 border-rose-100'}`}>
                     {currentExercise.difficulty} {currentExercise.type === 'roleplay' ? 'Conversation' : 'Challenge'}
                   </span>
-                  {currentExercise.type === 'roleplay' && (
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 bg-indigo-50 text-indigo-600 shadow-sm">
-                      <MessageSquare className="w-3 h-3 mr-2" /> Role-Play
-                    </span>
-                  )}
-                  {currentExercise.type === 'detective' && (
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 bg-amber-50 text-amber-600 shadow-sm">
-                      <Search className="w-3 h-3 mr-2" /> Detective Mode
-                    </span>
-                  )}
+                  <span className="inline-flex items-center px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border bg-slate-100 text-slate-600 border-slate-200 shadow-sm">
+                    {currentExercise.type === 'translation' && <Book className="w-3 h-3 mr-2" />}
+                    {currentExercise.type === 'roleplay' && <MessageSquare className="w-3 h-3 mr-2" />}
+                    {currentExercise.type === 'detective' && <Search className="w-3 h-3 mr-2" />}
+                    {currentExercise.type === 'translation' ? 'Translation' :
+                      currentExercise.type === 'roleplay' ? 'Role-Play' : 'Detective'}
+                  </span>
                 </div>
 
                 <div className="space-y-4">
@@ -527,71 +555,27 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
             </div>
 
             <div className="relative">
-              {appState === AppState.FEEDBACK && feedback ? (
-                <div className="w-full bg-white px-2 py-8 rounded-[3rem] animate-fade-in">
-                  <div className="flex flex-wrap items-end gap-x-6 gap-y-20 leading-[1.6] justify-center sm:justify-start">
-                    {(feedback.detailedAnalysis || []).map((segment, idx) => {
-                      const status = segment.status;
-                      const isMissing = status === 'missing';
-                      const isExtra = status === 'extra';
-
-                      if (status === 'correct') {
-                        return (
-                          <div key={idx} className="relative transition-all duration-700 animate-slide-up-slight" style={{ animationDelay: `${idx * 40}ms` }}>
-                            <span className="text-4xl text-slate-900 font-bold py-2 px-1 hover:text-indigo-600 transition-colors cursor-default select-none">
-                              {segment.text}
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={idx}
-                          className="relative transition-all duration-700 group/token animate-slide-up-slight"
-                          style={{ animationDelay: `${idx * 40}ms` }}
-                        >
-                          <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none group-hover/token:pointer-events-auto transition-all duration-300">
-                            <span className={`text-[10px] font-black px-4 py-2 rounded-2xl shadow-2xl uppercase tracking-tighter whitespace-nowrap border-2 border-white
-                              ${isMissing ? 'bg-indigo-600 text-white' :
-                                isExtra ? 'bg-amber-600 text-white' :
-                                  'bg-rose-600 text-white'}`}>
-                              {segment.errorType || (isMissing ? "Lược bỏ" : isExtra ? "Phụ" : "Sửa lại")}
-                            </span>
-                            <div className={`w-[3px] h-4 mt-1 rounded-full ${isMissing ? 'bg-indigo-300' : isExtra ? 'bg-amber-300' : 'bg-rose-300'}`}></div>
-                          </div>
-
-                          <div className={`flex flex-col items-center border-[4px] rounded-[2rem] px-8 py-4 min-w-[6rem] transition-all shadow-md group-hover/token:shadow-xl
-                            ${isMissing ? 'bg-indigo-50 border-indigo-100 border-dashed hover:border-indigo-400' :
-                              isExtra ? 'bg-amber-50/50 border-amber-100 hover:border-amber-400 opacity-60 grayscale' :
-                                'bg-rose-50 border-rose-100 hover:border-rose-400'}`}>
-
-                            {isMissing ? (
-                              <span className="text-3xl text-indigo-700 font-black cursor-pointer transform active:scale-95 transition-transform"
-                                onClick={() => { }}>
-                                {segment.correction}
-                              </span>
-                            ) : isExtra ? (
-                              <span className="text-3xl text-amber-800/50 font-bold line-through decoration-[4px] decoration-amber-400/20">
-                                {segment.text}
-                              </span>
-                            ) : (
-                              <>
-                                <span className="text-xs text-rose-500 line-through decoration-[2px] mb-3 font-bold italic opacity-40">
-                                  {segment.text}
-                                </span>
-                                <span className="text-3xl text-emerald-600 font-black cursor-pointer transform active:scale-95 transition-transform"
-                                  onClick={() => { }}>
-                                  {segment.correction}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+              {appState === AppState.EVALUATING && (!feedback || !feedback.detailedAnalysis || feedback.detailedAnalysis.length === 0) ? (
+                <div className="w-full h-48 bg-slate-50/50 rounded-[3.5rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 animate-pulse">
+                  <div className="relative">
+                    <div className="absolute -inset-4 bg-indigo-500/20 rounded-full blur-xl animate-pulse"></div>
+                    <Loader2 className="w-12 h-12 text-indigo-500 animate-spin relative z-10" />
+                  </div>
+                  <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs animate-pulse">{loadingMessage}</p>
+                </div>
+              ) : appState === AppState.ERROR ? (
+                <div className="w-full h-48 bg-rose-50/50 rounded-[3.5rem] border-4 border-dashed border-rose-200 flex flex-col items-center justify-center gap-6 p-8 text-center group">
+                  <div className="w-16 h-16 bg-white rounded-2xl shadow-lg border border-rose-100 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
+                    <Flag className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-rose-900 mb-2 font-heading">Investigation Failed</h3>
+                    <p className="text-rose-600/70 text-sm font-medium">Có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau.</p>
                   </div>
                 </div>
+              ) : appState === AppState.FEEDBACK && feedback ? (
+                /* Redundant feedback logic removed, handled by FeedbackCard below */
+                <div className="w-full h-1" />
               ) : (
                 <div className="relative group">
                   <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3.5rem] blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
@@ -622,8 +606,12 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
             </div>
 
             {appState === AppState.FEEDBACK && feedback && (
-              <div className="animate-slide-up-slight">
-                <FeedbackCard result={feedback} onNext={finishQuestion} isLastQuestion={isLastQuestion} />
+              <div ref={feedbackRef} className="animate-slide-up-slight">
+                <FeedbackCard
+                  result={feedback}
+                  exerciseType={currentExercise.type}
+                  originalSentence={currentExercise.vietnamese}
+                />
               </div>
             )}
 
@@ -653,6 +641,14 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   </button>
                 )}
               </>
+            )}
+            {appState === AppState.ERROR && (
+              <button
+                onClick={() => { setAppState(AppState.IDLE); handleCheck(); }}
+                className="w-full h-16 bg-rose-600 hover:bg-rose-700 text-white font-black py-5 rounded-2xl transition-all shadow-[0_8px_0_0_#be123c] active:shadow-none active:translate-y-2 flex items-center justify-center gap-4 uppercase tracking-[0.2em] text-xs"
+              >
+                <RefreshCw className="w-5 h-5" /> Retry Investigation
+              </button>
             )}
             {(appState === AppState.IDLE || appState === AppState.EVALUATING) && (
               <button

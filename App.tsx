@@ -100,7 +100,7 @@ const App: React.FC = () => {
   const handleAddLesson = async (newLesson: Lesson) => {
     const saved = await saveLesson(
       { title: newLesson.title, description: newLesson.description, level: newLesson.level },
-      newLesson.exercises.map(ex => ({ vietnamese: ex.vietnamese, difficulty: ex.difficulty, hint: ex.hint }))
+      newLesson.exercises.map(ex => ({ type: ex.type, vietnamese: ex.vietnamese, difficulty: ex.difficulty, hint: ex.hint }))
     );
     if (saved) {
       setLessons(prev => [saved, ...prev]);

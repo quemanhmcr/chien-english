@@ -1,0 +1,22 @@
+.markdown-content p, .markdown-content-takeaway p {
+  margin: 0;
+}
+
+.markdown-content strong, .markdown-content-takeaway strong {
+  font-weight: 800;
+  color: inherit;
+}
+
+.markdown-content ul, .markdown-content ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content-takeaway li {
+  margin-bottom: 0.125rem;
+}

@@ -18,7 +18,24 @@ const EVAL_MAPPING: Record<string, keyof EvaluationResult | string> = {
   iv: 'improvedVersion',
   gp: 'grammarPoints',
   cn: 'coachNote',
-  ip: 'isPass'
+  ip: 'isPass',
+  rpm: 'rolePlayMetrics',
+  tt: 'toneType',
+  tv: 'toneValue',
+  // Role-play specific
+  ms: 'modelSentence',
+  sp: 'suggestionPhrases',
+  // Detective specific
+  og: 'originalError',
+  uc: 'userCaughtError',
+  vd: 'verdict'
+};
+
+const RPM_MAPPING: Record<string, string> = {
+  ta: 'taskAchievement',
+  cc: 'coherence',
+  lr: 'lexicalResource',
+  ga: 'grammar'
 };
 
 const TOKEN_MAPPING: Record<string, keyof AnalysisToken> = {
@@ -26,7 +43,8 @@ const TOKEN_MAPPING: Record<string, keyof AnalysisToken> = {
   s: 'status',
   c: 'correction',
   et: 'errorType',
-  e: 'explanation'
+  e: 'explanation',
+  r: 'explanation'  // 'r' (reason) in prompt maps to 'explanation' in UI
 };
 
 const STATUS_MAPPING: Record<string, AnalysisToken['status']> = {
@@ -51,6 +69,7 @@ function mapResponse(data: any): EvaluationResult {
   // Map detailedAnalysis
   if (data.da && Array.isArray(data.da)) {
     result.detailedAnalysis = data.da.map((item: any) => {
+      if (!item || typeof item !== 'object') return null; // Guard against non-object items
       const mappedItem: any = {};
       Object.keys(item).forEach(k => {
         const mappedK = TOKEN_MAPPING[k] || k;
@@ -61,6 +80,17 @@ function mapResponse(data: any): EvaluationResult {
         mappedItem[mappedK] = value;
       });
       return mappedItem;
+    }).filter(Boolean); // Remove nulls
+  } else {
+    result.detailedAnalysis = [];
+  }
+
+  // Map rolePlayMetrics
+  if (data.rpm && typeof data.rpm === 'object') {
+    result.rolePlayMetrics = {};
+    Object.keys(data.rpm).forEach(k => {
+      const mappedK = RPM_MAPPING[k] || k;
+      result.rolePlayMetrics[mappedK] = data.rpm[k];
     });
   }
 
@@ -97,10 +127,26 @@ function partialParseJson(jsonString: string): any {
       }
     });
 
+    // Extraction for rolePlayMetrics (short key "rpm")
+    const rpmIdx = jsonString.indexOf('"rpm"');
+    if (rpmIdx !== -1) {
+      const rpmContent = jsonString.substring(rpmIdx);
+      const metrics = ['ta', 'cc', 'lr', 'ga']; // Goal Achievement, Coherence, Lexical, Grammar
+      raw.rpm = {};
+      metrics.forEach(m => {
+        const mRegex = new RegExp(`"${m}"\\s*:\\s*(\\d+)`, 'g');
+        const mMatch = mRegex.exec(rpmContent);
+        if (mMatch) {
+          raw.rpm[m] = parseInt(mMatch[1]);
+        }
+      });
+    }
+
     // Extraction for detailedAnalysis (short key "da")
-    const daIdx = jsonString.indexOf('"da"');
+    const daIdx = jsonString.lastIndexOf('"da"'); // Use lastIndexOf to handle potential partial duplicates
     if (daIdx !== -1) {
       const daContent = jsonString.substring(daIdx);
+      // More flexible object regex to handle nested or trailing chars better during streaming
       const objectRegex = /\{[^{}]*?"t"[^{}]*?\}/g;
       const matches = [...daContent.matchAll(objectRegex)];
 
@@ -110,6 +156,7 @@ function partialParseJson(jsonString: string): any {
           const obj = JSON.parse(m[0]);
           if (obj.t) partialArray.push(obj);
         } catch (innerE) {
+          // Manual extraction for semi-formed objects
           const tM = m[0].match(/"t"\s*:\s*"(.*?)"/);
           const sM = m[0].match(/"s"\s*:\s*"(.*?)"/);
           const cM = m[0].match(/"c"\s*:\s*"(.*?)"/);
@@ -132,7 +179,7 @@ function partialParseJson(jsonString: string): any {
     const gpStart = jsonString.indexOf('"gp"');
     if (gpStart !== -1) {
       const content = jsonString.substring(gpStart);
-      const items = [...content.matchAll(/"([^"]+)"/g)].map(m => m[1]).filter(s => s !== "gp");
+      const items = [...content.matchAll(/"([^"]+)"/g)].map(m => m[1]).filter(s => s !== "gp" && s !== ":");
       if (items.length > 0) raw.gp = items;
     }
 
@@ -229,16 +276,19 @@ export const evaluateExercise = async (
   type: 'translation' | 'roleplay' | 'detective' = 'translation',
   onUpdate?: (partial: EvaluationResult) => void
 ): Promise<EvaluationResult> => {
+  // Normalize type to lowercase for case-insensitive matching
+  const normalizedType = (type || '').toLowerCase() as 'translation' | 'roleplay' | 'detective';
+
   try {
-    const systemPrompt = type === 'roleplay'
+    const systemPrompt = normalizedType === 'roleplay'
       ? ROLE_PLAY_EVAL_PROMPT
-      : type === 'detective'
+      : normalizedType === 'detective'
         ? DETECTIVE_EVAL_PROMPT
         : TRANSLATION_EVAL_PROMPT;
 
-    const userPrompt = type === 'roleplay'
+    const userPrompt = normalizedType === 'roleplay'
       ? `Goal/Situation: "${vietnamese}"\nLearner's response: "${userEnglish}"`
-      : type === 'detective'
+      : normalizedType === 'detective'
         ? `Incorrect Sentence: "${vietnamese}"\nLearner's Corrected Version: "${userEnglish}"`
         : `VN: "${vietnamese}"\nEN: "${userEnglish}"`;
 

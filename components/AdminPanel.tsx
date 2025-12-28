@@ -146,16 +146,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleImportJson = async () => {
     if (!importJson.trim()) return;
     try {
-      const parsed = JSON.parse(importJson);
-      if (!parsed.title || !parsed.exercises || !Array.isArray(parsed.exercises)) {
-        throw new Error('Cấu trúc JSON không hợp lệ.');
+      // Robust JSON extraction (handles markdown code blocks or preamble text)
+      let jsonToParse = importJson.trim();
+      const jsonMatch = jsonToParse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonToParse = jsonMatch[0];
       }
+
+      const parsed = JSON.parse(jsonToParse);
+
+      // Basic validation
+      if (!parsed.title || !parsed.exercises || !Array.isArray(parsed.exercises)) {
+        throw new Error('Thiếu trường bắt buộc (title hoặc exercises).');
+      }
+
+      // Check for 'vietnamese' key in exercises (LLM sometimes changes it to 'english' for detective)
+      const hasInvalidExercises = parsed.exercises.some((ex: any) => !ex.vietnamese);
+      if (hasInvalidExercises) {
+        throw new Error('Một số câu hỏi thiếu trường "vietnamese". Hãy đảm bảo LLM không tự ý đổi tên trường này.');
+      }
+
       await onAddLesson(parsed as any);
       setImportJson('');
       setIsArchitectOpen(false);
       alert('Đã nhập bài học thành công!');
-    } catch (err) {
-      alert('Lỗi: JSON không đúng định dạng hoặc thiếu trường bắt buộc.');
+    } catch (err: any) {
+      alert(`Lỗi: ${err.message || 'JSON không đúng định dạng.'}`);
       console.error(err);
     }
   };
