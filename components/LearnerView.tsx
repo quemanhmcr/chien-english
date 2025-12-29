@@ -11,6 +11,11 @@ import { FeedbackCard } from './FeedbackCard';
 import { signOut } from '../services/authService';
 import { saveProgress, saveExerciseProgress } from '../services/lessonService';
 
+// Helper for development-only logging
+const devLog = (...args: any[]) => {
+  if (import.meta.env.DEV) console.log(...args);
+};
+
 interface LearnerViewProps {
   lessons: Lesson[];
   onOpenAdmin: () => void;
@@ -166,7 +171,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
           ? Math.round(sessionScore / selectedLesson.exercises.length)
           : 0;
 
-        console.log('[SAVE] Lesson completion:', {
+        devLog('[SAVE] Lesson completion:', {
           userId: userProfile.id,
           lessonId: selectedLesson.id,
           finalScore,
@@ -179,7 +184,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
           feedback ? saveExerciseProgress(userProfile.id, exerciseToSave!.id, scoreToSave) : Promise.resolve(),
           saveProgress(userProfile.id, selectedLesson.id, finalScore)
         ]).then(() => {
-          console.log('[SAVE] Success! Refreshing data...');
+          devLog('[SAVE] Success! Refreshing data...');
           onRefreshData();
         }).catch(e => {
           console.error('[SAVE] Failed to save progress:', e);

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Lesson, UserProfile as UserProfileType } from './types';
-import { LearnerView } from './components/LearnerView';
 import { Auth } from './components/Auth';
 import { UserProfile } from './components/UserProfile';
 import { ToastProvider } from './components/Toast';
@@ -9,7 +8,8 @@ import { supabase } from './services/supabaseClient';
 import { getProfile, ensureProfile } from './services/authService';
 import { Session } from '@supabase/supabase-js';
 
-// Lazy load AdminPanel for code-splitting (only needed by admins)
+// Lazy load heavy components for code-splitting
+const LearnerView = lazy(() => import('./components/LearnerView').then(m => ({ default: m.LearnerView })));
 const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 
 // Helper for development-only logging
@@ -157,22 +157,22 @@ const App: React.FC = () => {
 
   return (
     <ToastProvider>
-      {view === 'learner' ? (
-        <LearnerView
-          lessons={lessons}
-          onOpenAdmin={() => setView('admin')}
-          userProfile={profile}
-          onOpenProfile={() => setShowProfile(true)}
-          userProgress={userProgress}
-          exerciseProgress={exerciseProgress}
-          onRefreshData={() => fetchData(session?.user?.id)}
-        />
-      ) : (
-        <Suspense fallback={
-          <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-          </div>
-        }>
+      <Suspense fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      }>
+        {view === 'learner' ? (
+          <LearnerView
+            lessons={lessons}
+            onOpenAdmin={() => setView('admin')}
+            userProfile={profile}
+            onOpenProfile={() => setShowProfile(true)}
+            userProgress={userProgress}
+            exerciseProgress={exerciseProgress}
+            onRefreshData={() => fetchData(session?.user?.id)}
+          />
+        ) : (
           <AdminPanel
             lessons={lessons}
             profile={profile}
@@ -181,8 +181,8 @@ const App: React.FC = () => {
             onDeleteLesson={handleDeleteLesson}
             onBack={() => setView('learner')}
           />
-        </Suspense>
-      )}
+        )}
+      </Suspense>
 
       {showProfile && profile && (
         <UserProfile
