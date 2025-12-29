@@ -6,8 +6,10 @@ import {
 } from 'lucide-react';
 import { AppState, EvaluationResult, Lesson, UserProfile as UserProfileType, UserProgress } from '../types';
 import { evaluateExercise } from '../services/mimoService';
+import { runLocalDiff, LocalDiffResult } from '../services/localDiff';
 import { ProgressBar } from './ProgressBar';
 import { FeedbackCard } from './FeedbackCard';
+import { FeedbackSkeleton } from './FeedbackSkeleton';
 import { signOut } from '../services/authService';
 import { saveProgress, saveExerciseProgress } from '../services/lessonService';
 
@@ -41,6 +43,10 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   const [feedback, setFeedback] = useState<EvaluationResult | null>(null);
   const [sessionScore, setSessionScore] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('AI is investigating...');
+
+  // Ghost Pipeline State - Instant feedback
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [localDiff, setLocalDiff] = useState<LocalDiffResult | null>(null);
 
   const LOADING_MESSAGES = [
     "Analyzing grammar structure...",
@@ -98,6 +104,8 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
       setFeedback(null);
       setAppState(AppState.IDLE);
       setSessionScore(0);
+      setShowSkeleton(false);
+      setLocalDiff(null);
     }
   }, [selectedLesson, exerciseProgress]);
 
@@ -120,9 +128,17 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   const handleCheck = async () => {
     if (!userInput.trim() || !currentExercise) return;
 
+    // ========== GHOST PIPELINE ==========
+    // L1: Instant skeleton (0ms) - Show visual feedback immediately
+    setShowSkeleton(true);
     setAppState(AppState.EVALUATING);
 
-    // Cycle loading messages
+    // L2: Local diff (10-30ms) - Client-side word analysis
+    const localResult = runLocalDiff(userInput);
+    setLocalDiff(localResult);
+
+    // L3: API streaming - Full AI analysis
+    // Cycle loading messages (for fallback if skeleton hides)
     let msgIdx = 0;
     setLoadingMessage(LOADING_MESSAGES[0]);
     const msgInterval = setInterval(() => {
@@ -137,20 +153,23 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         currentExercise.type || 'translation',
         (partial) => {
           setFeedback(partial);
-          // Only switch to FEEDBACK if we have some analysis to show
+          // Hide skeleton once AI starts streaming actual analysis
           if (partial.detailedAnalysis && partial.detailedAnalysis.length > 0) {
+            setShowSkeleton(false);
             setAppState(AppState.FEEDBACK);
             clearInterval(msgInterval);
           }
         }
       );
       setFeedback(result);
+      setShowSkeleton(false);
       // Always accumulate score (even for failed attempts) for accurate average
       setSessionScore(prev => prev + result.score);
       setAppState(AppState.FEEDBACK);
       clearInterval(msgInterval);
     } catch (error) {
       console.error(error);
+      setShowSkeleton(false);
       setAppState(AppState.ERROR);
       clearInterval(msgInterval);
     }
@@ -594,7 +613,16 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
             </div>
 
             <div className="relative">
-              {appState === AppState.EVALUATING && (!feedback || !feedback.detailedAnalysis || feedback.detailedAnalysis.length === 0) ? (
+              {/* Ghost Pipeline: Instant Skeleton */}
+              {showSkeleton && appState === AppState.EVALUATING && (
+                <FeedbackSkeleton
+                  localDiff={localDiff || undefined}
+                  exerciseType={currentExercise.type}
+                />
+              )}
+
+              {/* Fallback loader (only if skeleton not shown) */}
+              {!showSkeleton && appState === AppState.EVALUATING && (!feedback || !feedback.detailedAnalysis || feedback.detailedAnalysis.length === 0) && (
                 <div className="w-full h-48 bg-slate-50/50 rounded-[3.5rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 animate-pulse">
                   <div className="relative">
                     <div className="absolute -inset-4 bg-indigo-500/20 rounded-full blur-xl animate-pulse"></div>
@@ -602,7 +630,10 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   </div>
                   <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs animate-pulse">{loadingMessage}</p>
                 </div>
-              ) : appState === AppState.ERROR ? (
+              )}
+
+              {/* Error State */}
+              {appState === AppState.ERROR && (
                 <div className="w-full h-48 bg-rose-50/50 rounded-[3.5rem] border-4 border-dashed border-rose-200 flex flex-col items-center justify-center gap-6 p-8 text-center group">
                   <div className="w-16 h-16 bg-white rounded-2xl shadow-lg border border-rose-100 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
                     <Flag className="w-8 h-8" />
@@ -612,10 +643,15 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                     <p className="text-rose-600/70 text-sm font-medium">Có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau.</p>
                   </div>
                 </div>
-              ) : appState === AppState.FEEDBACK && feedback ? (
-                /* Redundant feedback logic removed, handled by FeedbackCard below */
+              )}
+
+              {/* Feedback spacer (FeedbackCard rendered below) */}
+              {appState === AppState.FEEDBACK && feedback && (
                 <div className="w-full h-1" />
-              ) : (
+              )}
+
+              {/* Text Input (IDLE state) */}
+              {appState === AppState.IDLE && (
                 <div className="relative group">
                   <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3.5rem] blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
                   <textarea
@@ -632,7 +668,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                     }
                     spellCheck={false}
                     className={`relative w-full h-48 p-12 text-3xl font-bold bg-white border-4 rounded-[3.5rem] transition-all duration-500 resize-none outline-none
-                      ${appState === AppState.IDLE ? 'border-slate-100 focus:bg-white focus:border-indigo-600 focus:ring-[20px] focus:ring-indigo-600/5 text-slate-900 shadow-xl shadow-slate-200' : 'border-transparent bg-slate-50 text-slate-400'}`}
+                        ${appState === AppState.IDLE ? 'border-slate-100 focus:bg-white focus:border-indigo-600 focus:ring-[20px] focus:ring-indigo-600/5 text-slate-900 shadow-xl shadow-slate-200' : 'border-transparent bg-slate-50 text-slate-400'}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
