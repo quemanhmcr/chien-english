@@ -74,11 +74,11 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: () => void }> = ({ toast, o
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 50, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg max-w-sm ${backgrounds[toast.type]}`}
+            exit={{ opacity: 0, x: 30, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
+            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-md max-w-sm ${backgrounds[toast.type]}`}
         >
             {icons[toast.type]}
             <p className="flex-1 text-sm font-medium text-slate-800">{toast.message}</p>

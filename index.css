@@ -1,6 +1,54 @@
 @import "tailwindcss";
 
+/* ===== MATERIAL MOTION SYSTEM ===== */
+:root {
+  /* Material Motion Easing Curves */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
+  /* Duration Scale (optimized for zero latency feel) */
+  --duration-instant: 50ms;
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 200ms;
+  --duration-slower: 300ms;
+
+  /* Eye-Comfort Color Palette */
+  --bg-base: #FAFBFC;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F8FAFC;
+  --bg-subtle: #F1F5F9;
+
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-subtle: #CBD5E1;
+
+  --border-default: #E2E8F0;
+  --border-subtle: #F1F5F9;
+
+  --accent-primary: #6366F1;
+  --accent-soft: #EEF2FF;
+  --accent-muted: #C7D2FE;
+
+  /* Shadows (subtle, not harsh) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
 /* ===== BASE STYLES ===== */
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .markdown-content p,
 .markdown-content-takeaway p {
   margin: 0;
@@ -8,7 +56,7 @@
 
 .markdown-content strong,
 .markdown-content-takeaway strong {
-  font-weight: 800;
+  font-weight: 700;
   color: inherit;
 }
 
@@ -28,8 +76,6 @@
 }
 
 /* ===== ACCESSIBILITY ===== */
-
-/* Screen reader only - visually hidden but accessible */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -42,61 +88,68 @@
   border: 0;
 }
 
-/* Skip link for keyboard navigation */
 .skip-link {
   position: absolute;
   top: -40px;
   left: 0;
-  background: #4F46E5;
+  background: var(--accent-primary);
   color: white;
   padding: 8px 16px;
   z-index: 100;
   text-decoration: none;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 0 0 8px 0;
-  transition: top 0.2s ease;
+  transition: top var(--duration-normal) var(--ease-standard);
 }
 
 .skip-link:focus {
   top: 0;
 }
 
-/* Enhanced focus states for keyboard navigation */
 *:focus-visible {
-  outline: 2px solid #4F46E5;
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* Remove focus outline for mouse users */
 *:focus:not(:focus-visible) {
   outline: none;
 }
 
 /* ===== PERFORMANCE ===== */
-
-/* GPU acceleration for animated elements */
-.animate-slide-up,
-.animate-fade-in,
-.animate-pulse {
-  will-change: transform, opacity;
+.gpu-accelerate {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* Content visibility for off-screen optimization */
 .lazy-render {
   content-visibility: auto;
   contain-intrinsic-size: 0 500px;
 }
 
-/* ===== ANIMATIONS ===== */
+/* ===== MATERIAL MOTION ANIMATIONS ===== */
 
-/* Subtle slide up animation for cards */
-@keyframes slideUpSlight {
+/* Fade In - subtle entrance */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-standard-decelerate) forwards;
+}
+
+/* Slide Up - for cards and content */
+@keyframes slideUp {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -108,15 +161,15 @@ html {
   }
 }
 
-.animate-slide-up-slight {
-  animation: slideUpSlight 0.3s ease-out forwards;
+.animate-slide-up {
+  animation: slideUp var(--duration-slow) var(--ease-emphasized-decelerate) forwards;
 }
 
-/* Slide down animation for notifications */
+/* Slide Down - for notifications */
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-100%);
+    transform: translateY(-8px);
   }
 
   to {
@@ -126,7 +179,43 @@ html {
 }
 
 .animate-slide-down {
-  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideDown var(--duration-slow) var(--ease-emphasized-decelerate) forwards;
+}
+
+/* Scale - for buttons and interactive elements */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-normal) var(--ease-emphasized-decelerate) forwards;
+}
+
+/* ===== TRANSITION UTILITIES ===== */
+.transition-material {
+  transition-property: all;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: var(--ease-standard);
+}
+
+.transition-fast {
+  transition-property: all;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+.transition-colors-material {
+  transition-property: color, background-color, border-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
 }
 
 /* ===== REDUCED MOTION ===== */
@@ -143,16 +232,6 @@ html {
 
   html {
     scroll-behavior: auto;
-  }
-
-  .animate-slide-up,
-  .animate-fade-in,
-  .animate-pulse,
-  .animate-slide-up-slight,
-  .animate-slide-down {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
   }
 }
 

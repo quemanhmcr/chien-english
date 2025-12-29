@@ -221,18 +221,15 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   if (!selectedLesson) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] font-sans pb-20">
-        <header className="bg-white/70 backdrop-blur-2xl border-b border-slate-200/60 px-6 py-4 sticky top-0 z-40">
+        <header className="bg-white border-b border-slate-100 px-6 py-4 sticky top-0 z-40">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                <div className="relative bg-white rounded-2xl p-2.5 shadow-sm border border-slate-100">
-                  <Flag className="w-6 h-6 text-indigo-600 fill-current" />
-                </div>
+              <div className="bg-indigo-50 rounded-xl p-2.5">
+                <Flag className="w-5 h-5 text-indigo-600" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-heading font-black text-2xl text-slate-900 tracking-tight">Chien <span className="text-indigo-600">English</span></h1>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Learning Management System</p>
+                <h1 className="font-heading font-bold text-xl text-slate-900 tracking-tight">Chien <span className="text-indigo-600">English</span></h1>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Learning Platform</p>
               </div>
             </div>
 
@@ -240,9 +237,9 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
               {userProfile?.role === 'admin' && (
                 <button
                   onClick={onOpenAdmin}
-                  className="group flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold transition-all text-sm shadow-xl shadow-slate-200"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium transition-colors duration-fast text-sm"
                 >
-                  <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
+                  <Settings className="w-4 h-4" />
                   <span>Admin Panel</span>
                 </button>
               )}
@@ -254,7 +251,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   onClick={onOpenProfile}
                   className="flex items-center gap-3 hover:bg-slate-50 p-1.5 pr-4 rounded-2xl transition-all border border-transparent hover:border-slate-200"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-100">
+                  <div className="w-9 h-9 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
                     {userProfile?.full_name?.charAt(0).toUpperCase()}
                   </div>
                   <div className="text-left hidden md:block">
@@ -264,7 +261,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"
+                  className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors duration-fast"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
