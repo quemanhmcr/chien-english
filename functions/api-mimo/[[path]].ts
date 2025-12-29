@@ -10,12 +10,31 @@ interface EventContext {
     params: { path?: string[] };
 }
 
+// CORS headers for all responses
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400", // Cache preflight for 24 hours
+};
+
 export async function onRequest(context: EventContext): Promise<Response> {
     const { request, env, params } = context;
 
+    // Handle CORS preflight - return immediately for fastest response
+    if (request.method === "OPTIONS") {
+        return new Response(null, {
+            status: 204,
+            headers: corsHeaders
+        });
+    }
+
     // Only allow POST requests
     if (request.method !== "POST") {
-        return new Response("Method not allowed", { status: 405 });
+        return new Response("Method not allowed", {
+            status: 405,
+            headers: corsHeaders
+        });
     }
 
     // Get the path from params
@@ -39,15 +58,20 @@ export async function onRequest(context: EventContext): Promise<Response> {
             body,
         });
 
-        // For streaming responses, pass through directly
-        if (request.headers.get("accept")?.includes("text/event-stream") ||
-            body.includes('"stream":true')) {
+        // Detect streaming request
+        const isStreaming = request.headers.get("accept")?.includes("text/event-stream") ||
+            body.includes('"stream":true');
+
+        if (isStreaming) {
+            // For streaming: pass through body directly with optimized headers
             return new Response(response.body, {
                 status: response.status,
                 headers: {
-                    "Content-Type": response.headers.get("Content-Type") || "text/event-stream",
-                    "Cache-Control": "no-cache",
-                    "Access-Control-Allow-Origin": "*",
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no", // Disable nginx buffering
+                    ...corsHeaders,
                 },
             });
         }
@@ -58,7 +82,8 @@ export async function onRequest(context: EventContext): Promise<Response> {
             status: response.status,
             headers: {
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-store",
+                ...corsHeaders,
             },
         });
     } catch (error) {
@@ -67,7 +92,10 @@ export async function onRequest(context: EventContext): Promise<Response> {
             JSON.stringify({ error: "Internal server error" }),
             {
                 status: 500,
-                headers: { "Content-Type": "application/json" }
+                headers: {
+                    "Content-Type": "application/json",
+                    ...corsHeaders
+                }
             }
         );
     }
