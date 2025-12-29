@@ -1,0 +1,12 @@
+# Cloudflare Pages Configuration
+name = "chien-english"
+pages_build_output_dir = "dist"
+
+# Compatibility settings
+compatibility_date = "2024-12-28"
+
+[vars]
+# Non-sensitive environment variables (public)
+# Sensitive vars should be set via `wrangler pages secret put`
+
+# Build configuration is managed via Cloudflare Dashboard or GitHub integration
