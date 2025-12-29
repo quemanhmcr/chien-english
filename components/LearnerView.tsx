@@ -140,9 +140,8 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         }
       );
       setFeedback(result);
-      if (result.isPass) {
-        setSessionScore(prev => prev + result.score);
-      }
+      // Always accumulate score (even for failed attempts) for accurate average
+      setSessionScore(prev => prev + result.score);
       setAppState(AppState.FEEDBACK);
       clearInterval(msgInterval);
     } catch (error) {
@@ -152,35 +151,52 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
     }
   };
 
-  const finishQuestion = async () => {
-    // Save current step progress before moving
-    if (userProfile && currentExercise) {
-      try {
-        await saveExerciseProgress(userProfile.id, currentExercise.id, feedback?.score || 0);
-        // We don't call onRefreshData here to avoid re-rendering the whole app on every step 
-        // unless you want the menu to update in background.
-      } catch (e) {
-        console.error('Failed to save step progress', e);
-      }
-    }
+
+  const finishQuestion = () => {
+    // OPTIMISTIC UI: Update state FIRST for instant response, save to DB in background
+    const exerciseToSave = currentExercise;
+    const scoreToSave = feedback?.score || 0;
 
     if (isLastQuestion) {
       setAppState(AppState.COMPLETED);
-      // Save lesson completion progress to DB
+
+      // Background save for lesson completion
       if (userProfile && selectedLesson) {
-        const finalScore = Math.round((sessionScore + (feedback?.score || 0)) / selectedLesson.exercises.length);
-        try {
-          await saveProgress(userProfile.id, selectedLesson.id, finalScore);
+        const finalScore = selectedLesson.exercises.length > 0
+          ? Math.round(sessionScore / selectedLesson.exercises.length)
+          : 0;
+
+        console.log('[SAVE] Lesson completion:', {
+          userId: userProfile.id,
+          lessonId: selectedLesson.id,
+          finalScore,
+          sessionScore,
+          exerciseCount: selectedLesson.exercises.length
+        });
+
+        // Fire and forget - don't block UI
+        Promise.all([
+          feedback ? saveExerciseProgress(userProfile.id, exerciseToSave!.id, scoreToSave) : Promise.resolve(),
+          saveProgress(userProfile.id, selectedLesson.id, finalScore)
+        ]).then(() => {
+          console.log('[SAVE] Success! Refreshing data...');
           onRefreshData();
-        } catch (e) {
-          console.error('Failed to save progress', e);
-        }
+        }).catch(e => {
+          console.error('[SAVE] Failed to save progress:', e);
+        });
       }
     } else {
+      // Update UI immediately
       setCurrentIndex(prev => prev + 1);
       setUserInput('');
       setFeedback(null);
       setAppState(AppState.IDLE);
+
+      // Background save for exercise progress - don't wait
+      if (userProfile && exerciseToSave && feedback) {
+        saveExerciseProgress(userProfile.id, exerciseToSave.id, scoreToSave)
+          .catch(e => console.error('Failed to save step progress:', e));
+      }
     }
   };
 
@@ -283,9 +299,9 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   </div>
                   <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 hover:border-indigo-200 transition-colors col-span-2 sm:col-span-1">
                     <div className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-indigo-500" /> Active Streaks
+                      <Clock className="w-3 h-3 text-indigo-500" /> Lessons Done
                     </div>
-                    <div className="text-2xl font-black text-slate-900">12 <span className="text-xs text-slate-400">Days</span></div>
+                    <div className="text-2xl font-black text-slate-900">{completedCount} <span className="text-xs text-slate-400">of {lessons.length}</span></div>
                   </div>
                 </div>
               </div>
@@ -295,19 +311,38 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
               <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none group-hover:scale-125 transition-transform duration-1000">
                 <Trophy className="w-40 h-40" />
               </div>
-              <div>
-                <h3 className="text-xl font-heading font-black mb-2">Thử thách tuần</h3>
-                <p className="text-indigo-100 text-sm font-medium leading-relaxed">Hoàn thành 5 bài học cấp độ Intermediate để nhận huy hiệu "Fluent Speaker".</p>
-              </div>
-              <div className="mt-8">
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-indigo-200">Progress</span>
-                  <span className="text-lg font-black italic">60%</span>
-                </div>
-                <div className="h-3 bg-indigo-900/50 rounded-full overflow-hidden border border-white/10 p-0.5">
-                  <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: '60%' }}></div>
-                </div>
-              </div>
+              {(() => {
+                // Calculate actual progress for intermediate lessons
+                const intermediateLessons = lessons.filter(l => l.level === 'Intermediate');
+                const completedIntermediate = intermediateLessons.filter(l =>
+                  userProgress.some(p => p.lesson_id === l.id)
+                ).length;
+                const targetCount = Math.min(5, intermediateLessons.length);
+                const progressPct = targetCount > 0 ? Math.round((completedIntermediate / targetCount) * 100) : 0;
+                const clampedPct = Math.min(100, progressPct);
+
+                return (
+                  <>
+                    <div>
+                      <h3 className="text-xl font-heading font-black mb-2">Thử thách tuần</h3>
+                      <p className="text-indigo-100 text-sm font-medium leading-relaxed">
+                        {intermediateLessons.length > 0
+                          ? `Hoàn thành ${targetCount} bài học cấp độ Intermediate để nhận huy hiệu "Fluent Speaker".`
+                          : 'Hoàn thành các bài học để mở khoá thử thách!'}
+                      </p>
+                    </div>
+                    <div className="mt-8">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-xs font-black uppercase tracking-widest text-indigo-200">Progress</span>
+                        <span className="text-lg font-black italic">{clampedPct}%</span>
+                      </div>
+                      <div className="h-3 bg-indigo-900/50 rounded-full overflow-hidden border border-white/10 p-0.5">
+                        <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${clampedPct}%` }}></div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -439,7 +474,9 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   // --- RENDER: EXERCISE FLOW ---
 
   if (appState === AppState.COMPLETED) {
-    const finalScore = Math.round(sessionScore / selectedLesson.exercises.length);
+    const finalScore = selectedLesson.exercises.length > 0
+      ? Math.round(sessionScore / selectedLesson.exercises.length)
+      : 0;
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 overflow-hidden relative">
         {/* Background Sparkles */}
@@ -494,7 +531,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
           </div>
 
           <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-indigo-600 shadow-inner border border-slate-100">
-            {Math.round((currentIndex / selectedLesson.exercises.length) * 100)}%
+            {Math.round(((currentIndex + 1) / selectedLesson.exercises.length) * 100)}%
           </div>
         </div>
       </header>
@@ -625,23 +662,42 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-50">
         <div className="bg-white/95 backdrop-blur-2xl border border-slate-200/60 p-5 rounded-[2.5rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] ring-1 ring-slate-950/5">
           <div className="flex gap-4">
-            {appState === AppState.FEEDBACK && (
-              <>
-                {!feedback?.isPass && (
-                  <button onClick={() => { setAppState(AppState.IDLE); setFeedback(null); }} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold py-5 rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[10px] border border-slate-200 shadow-sm">Thử lại</button>
-                )}
-                {!feedback?.isPass ? (
-                  <button onClick={finishQuestion} className="flex-1 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-500 font-extrabold py-5 rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[10px]">Bỏ qua</button>
-                ) : (
+            {appState === AppState.FEEDBACK && (() => {
+              // PASS = score >= 70 OR AI marked as pass
+              const isPassingScore = (feedback?.score ?? 0) >= 70 || feedback?.isPass;
+
+              return isPassingScore ? (
+                <>
+                  <button
+                    onClick={() => { setAppState(AppState.IDLE); setFeedback(null); setUserInput(''); }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold py-5 rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[10px] border border-slate-200"
+                  >
+                    Xem lại
+                  </button>
                   <button
                     onClick={finishQuestion}
-                    className="w-full h-16 flex items-center justify-center gap-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-5 rounded-2xl transition-all shadow-[0_8px_0_0_#059669] active:shadow-none active:translate-y-2 uppercase tracking-widest text-xs"
+                    className="flex-1 h-16 flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-5 rounded-2xl transition-all shadow-[0_8px_0_0_#059669] active:shadow-none active:translate-y-2 uppercase tracking-widest text-xs"
                   >
-                    {isLastQuestion ? 'Hoàn thành bài học' : 'Sang câu tiếp theo'} <ArrowRight className="w-5 h-5" />
+                    {isLastQuestion ? 'Hoàn thành' : 'Tiếp theo'} <ArrowRight className="w-5 h-5" />
                   </button>
-                )}
-              </>
-            )}
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setAppState(AppState.IDLE); setFeedback(null); setUserInput(''); }}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-extrabold py-5 rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[10px] shadow-md"
+                  >
+                    Thử lại
+                  </button>
+                  <button
+                    onClick={finishQuestion}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold py-5 rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[10px]"
+                  >
+                    Bỏ qua (+{feedback?.score || 0} điểm)
+                  </button>
+                </>
+              );
+            })()}
             {appState === AppState.ERROR && (
               <button
                 onClick={() => { setAppState(AppState.IDLE); handleCheck(); }}
@@ -662,6 +718,6 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };

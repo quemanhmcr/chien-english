@@ -1,13 +1,17 @@
-.markdown-content p, .markdown-content-takeaway p {
+/* ===== BASE STYLES ===== */
+.markdown-content p,
+.markdown-content-takeaway p {
   margin: 0;
 }
 
-.markdown-content strong, .markdown-content-takeaway strong {
+.markdown-content strong,
+.markdown-content-takeaway strong {
   font-weight: 800;
   color: inherit;
 }
 
-.markdown-content ul, .markdown-content ol {
+.markdown-content ul,
+.markdown-content ol {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
   padding-left: 1.25rem;
@@ -19,4 +23,145 @@
 
 .markdown-content-takeaway li {
   margin-bottom: 0.125rem;
+}
+
+/* ===== ACCESSIBILITY ===== */
+
+/* Screen reader only - visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #4F46E5;
+  color: white;
+  padding: 8px 16px;
+  z-index: 100;
+  text-decoration: none;
+  font-weight: 700;
+  border-radius: 0 0 8px 0;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Enhanced focus states for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #4F46E5;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove focus outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ===== PERFORMANCE ===== */
+
+/* GPU acceleration for animated elements */
+.animate-slide-up,
+.animate-fade-in,
+.animate-pulse {
+  will-change: transform, opacity;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Content visibility for off-screen optimization */
+.lazy-render {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* ===== ANIMATIONS ===== */
+
+/* Subtle slide up animation for cards */
+@keyframes slideUpSlight {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up-slight {
+  animation: slideUpSlight 0.3s ease-out forwards;
+}
+
+/* Slide down animation for notifications */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-slide-up,
+  .animate-fade-in,
+  .animate-pulse,
+  .animate-slide-up-slight,
+  .animate-slide-down {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
 }

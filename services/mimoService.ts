@@ -244,27 +244,68 @@ async function fetchStreamingMiMo(messages: any[], onUpdate: (partialData: any) 
   return partialParseJson(fullContent);
 }
 
-async function fetchMiMo(messages: any[], responseFormat?: any) {
-  const response = await fetch(BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`,
-      "api-key": API_KEY,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      response_format: responseFormat,
-    }),
-  });
+async function fetchMiMo(messages: any[], responseFormat?: any, retries = 3): Promise<any> {
+  const TIMEOUT_MS = 30000; // 30 seconds timeout
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `API error: ${response.status}`);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+      const response = await fetch(BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${API_KEY}`,
+          "api-key": API_KEY,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages,
+          response_format: responseFormat,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        // Handle specific error codes
+        if (response.status === 429) {
+          throw new Error("Quá nhiều yêu cầu. Vui lòng đợi một chút và thử lại.");
+        } else if (response.status === 503 || response.status === 502) {
+          throw new Error("Máy chủ AI đang bận. Đang thử lại...");
+        } else {
+          throw new Error(errorData.message || `Lỗi kết nối: ${response.status}`);
+        }
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      lastError = error;
+
+      // Don't retry on abort (user cancelled) or client errors
+      if (error.name === 'AbortError') {
+        throw new Error("Kết nối quá lâu. Vui lòng kiểm tra mạng và thử lại.");
+      }
+
+      // Log retry attempt (only in development)
+      if (import.meta.env.DEV) {
+        console.warn(`[MiMo API] Attempt ${attempt}/${retries} failed:`, error.message);
+      }
+
+      // Wait before retry (exponential backoff: 1s, 2s, 4s)
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+      }
+    }
   }
 
-  return await response.json();
+  // All retries failed
+  throw lastError || new Error("Không thể kết nối máy chủ AI. Vui lòng thử lại sau.");
 }
 
 /**

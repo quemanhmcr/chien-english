@@ -1,13 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Lesson, UserProfile as UserProfileType } from './types';
 import { LearnerView } from './components/LearnerView';
-import { AdminPanel } from './components/AdminPanel';
 import { Auth } from './components/Auth';
 import { UserProfile } from './components/UserProfile';
+import { ToastProvider } from './components/Toast';
 import { getLessons, saveLesson, deleteLesson, getUserProgress } from './services/lessonService';
 import { supabase } from './services/supabaseClient';
 import { getProfile, ensureProfile } from './services/authService';
 import { Session } from '@supabase/supabase-js';
+
+// Lazy load AdminPanel for code-splitting (only needed by admins)
+const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
+
+// Helper for development-only logging
+const devLog = (...args: any[]) => {
+  if (import.meta.env.DEV) console.log(...args);
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<'learner' | 'admin'>('learner');
@@ -22,7 +30,7 @@ const App: React.FC = () => {
 
   const fetchData = async (userId?: string) => {
     try {
-      console.log('App: Fetching data for user:', userId || 'Guest');
+      devLog('App: Fetching data for user:', userId || 'Guest');
       const lessonsData = await getLessons();
       setLessons(lessonsData);
 
@@ -41,9 +49,9 @@ const App: React.FC = () => {
 
   const fetchProfileData = async (userId: string, metadata?: any) => {
     try {
-      console.log('App: Ensuring profile for user:', userId);
+      devLog('App: Ensuring profile for user:', userId);
       const userProfile = await ensureProfile(userId, metadata);
-      console.log('App: Profile result:', userProfile ? 'Found/Created' : 'Failed');
+      devLog('App: Profile result:', userProfile ? 'Found/Created' : 'Failed');
       setProfile(userProfile);
     } catch (err) {
       console.error('App: Error in fetchProfileData:', err);
@@ -148,7 +156,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <>
+    <ToastProvider>
       {view === 'learner' ? (
         <LearnerView
           lessons={lessons}
@@ -160,14 +168,20 @@ const App: React.FC = () => {
           onRefreshData={() => fetchData(session?.user?.id)}
         />
       ) : (
-        <AdminPanel
-          lessons={lessons}
-          profile={profile}
-          onAddLesson={handleAddLesson}
-          onUpdateLesson={handleUpdateLesson}
-          onDeleteLesson={handleDeleteLesson}
-          onBack={() => setView('learner')}
-        />
+        <Suspense fallback={
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          </div>
+        }>
+          <AdminPanel
+            lessons={lessons}
+            profile={profile}
+            onAddLesson={handleAddLesson}
+            onUpdateLesson={handleUpdateLesson}
+            onDeleteLesson={handleDeleteLesson}
+            onBack={() => setView('learner')}
+          />
+        </Suspense>
       )}
 
       {showProfile && profile && (
@@ -177,7 +191,7 @@ const App: React.FC = () => {
           onClose={() => setShowProfile(false)}
         />
       )}
-    </>
+    </ToastProvider>
   );
 };
 

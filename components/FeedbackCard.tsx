@@ -62,8 +62,9 @@ const WordWithTooltip = ({
 
   return (
     <motion.span
-      initial={{ opacity: 0, y: 5 }}
+      initial={{ opacity: 0, y: 3 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className="relative inline-block"
@@ -87,16 +88,17 @@ const WordWithTooltip = ({
       <AnimatePresence>
         {isHovered && !isCorrect && (segment.explanation || segment.errorType) && (
           <motion.div
-            initial={{ opacity: 0, y: 5 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 3 }}
+            exit={{ opacity: 0, y: 2 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 z-50 pointer-events-none"
           >
             <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs relative">
               <div className="flex items-center gap-1.5 mb-1">
                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${isError ? 'bg-rose-500' :
-                    isExtra ? 'bg-amber-500' :
-                      'bg-emerald-500'
+                  isExtra ? 'bg-amber-500' :
+                    'bg-emerald-500'
                   }`}>
                   {segment.errorType || (isExtra ? 'Thừa từ' : isMissing ? 'Thiếu từ' : 'Lỗi')}
                 </span>
@@ -166,10 +168,10 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="mt-6 rounded-[2rem] bg-white border border-slate-200/80 flex flex-col shadow-xl relative overflow-hidden"
+      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+      className="mt-6 rounded-[2rem] bg-white border border-slate-200/80 flex flex-col shadow-xl relative overflow-hidden will-change-transform"
     >
       {/* Background decoration */}
       <div className={`absolute inset-0 opacity-40 pointer-events-none bg-gradient-to-br ${isPass ? 'from-emerald-50 via-transparent to-transparent' : 'from-rose-50 via-transparent to-transparent'}`} />
@@ -178,21 +180,21 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
+        transition={{ duration: 0.2, delay: 0.05 }}
         className="px-6 py-5 flex items-center gap-4 border-b border-slate-100 relative"
       >
         {/* Score Circle */}
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 25, delay: 0.08 }}
           className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg bg-gradient-to-br ${getScoreColor()} text-white`}
         >
           <span className="text-lg font-black"><ScoreCounter value={result.score} /></span>
         </motion.div>
 
         {/* Title & Status */}
-        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="flex-1">
+        <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: 0.1 }} className="flex-1">
           {isDetective ? (
             <>
               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl ${getVerdictInfo().bg} ${getVerdictInfo().color}`}>
@@ -246,7 +248,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
         {isDetective && (
           <div className="space-y-4">
             {result.originalError && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-2">
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.08 }} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-4 bg-rose-400 rounded-full" />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Lỗi cần tìm</span>
@@ -257,7 +259,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
               </motion.div>
             )}
 
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-2">
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.12 }} className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className={`w-1.5 h-4 rounded-full ${result.userCaughtError ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Câu bạn sửa</span>
@@ -272,7 +274,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-2">
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.16 }} className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Câu đúng</span>
@@ -288,7 +290,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
         {isRoleplay && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="space-y-2">
+              <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: 0.08 }} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className={`w-1.5 h-4 rounded-full ${isPass ? 'bg-slate-300' : 'bg-rose-400'}`} />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bạn nói</span>
@@ -302,7 +304,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                 </div>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="space-y-2">
+              <motion.div initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: 0.12 }} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Câu mẫu</span>
@@ -314,7 +316,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             </div>
 
             {result.suggestionPhrases && result.suggestionPhrases.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-2">
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.16 }} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-purple-500" />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cụm từ hay</span>
@@ -337,7 +339,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             )}
 
             {result.rolePlayMetrics && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.2 }} className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-indigo-500" />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Chỉ số</span>
@@ -358,7 +360,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${item.val}%` }}
-                          transition={{ duration: 0.8, delay: 0.6 + idx * 0.1 }}
+                          transition={{ duration: 0.5, delay: 0.25 + idx * 0.05, ease: 'easeOut' }}
                           className={`h-full ${item.color} rounded-full`}
                         />
                       </div>
@@ -374,7 +376,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
         {!isDetective && !isRoleplay && (
           <div className="space-y-4">
             {/* Your Answer */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-2">
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.08 }} className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className={`w-1.5 h-4 rounded-full ${isPass ? 'bg-emerald-400' : 'bg-rose-400'}`} />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Câu của bạn</span>
@@ -392,7 +394,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
+                transition={{ duration: 0.15, delay: 0.12 }}
                 className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center"
               >
                 <ArrowDown className="w-4 h-4 text-indigo-400" />
@@ -400,7 +402,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             </div>
 
             {/* Correct Version */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-2">
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.16 }} className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Câu chuẩn</span>
@@ -413,7 +415,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             </motion.div>
 
             {/* Explanation Card - Always visible */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="p-4 bg-indigo-50/80 border border-indigo-100 rounded-xl">
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.2 }} className="p-4 bg-indigo-50/80 border border-indigo-100 rounded-xl">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
                   <Lightbulb className="w-4 h-4" />
@@ -437,7 +439,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
             {/* Improved Version */}
             {result.improvedVersion && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="space-y-2">
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.24 }} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-purple-500" />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Câu nâng cao</span>
@@ -455,7 +457,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
         {/* Explanation for Detective & Roleplay */}
         {(isDetective || isRoleplay) && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="p-4 bg-indigo-50/80 border border-indigo-100 rounded-xl">
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.24 }} className="p-4 bg-indigo-50/80 border border-indigo-100 rounded-xl">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
                 {isDetective ? <Search className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
@@ -482,7 +484,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
       </div>
 
       {/* ===== FOOTER ===== */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="px-6 pb-5">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.28 }} className="px-6 pb-5">
         <div className={`flex items-center gap-3 p-4 rounded-xl text-white relative overflow-hidden ${isPass
           ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
           : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}

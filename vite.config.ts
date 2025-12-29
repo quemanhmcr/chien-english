@@ -26,6 +26,30 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
-    }
+    },
+    build: {
+      // Target modern browsers for smaller output
+      target: 'es2020',
+      // Use esbuild for minification (fast, built-in)
+      minify: 'esbuild',
+      // Code-splitting for better caching
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Separate vendor chunks for better caching
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-motion': ['framer-motion'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-icons': ['lucide-react'],
+          },
+        },
+      },
+      // Increase chunk size warning limit (icons are large but ok)
+      chunkSizeWarningLimit: 600,
+    },
+    // Optimize deps for faster dev server
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'framer-motion', 'lucide-react'],
+    },
   };
 });

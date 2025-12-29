@@ -105,6 +105,10 @@ export interface AdminStats {
   totalLessons: number;
   totalCompletions: number;
   avgScore: number;
-  difficultLessons: { id: string, title: string, avgScore: number }[];
+  difficultLessons: { id: string, title: string, avgScore: number, attempts?: number }[];
   topLearners: { id: string, full_name: string, completions: number, avgScore: number }[];
+  atRiskStudents?: { id: string, full_name: string, avgScore: number, daysSinceActive: number, reason: string }[];
+  weeklyGrowth?: number;
+  activeToday?: number;
+  thisWeekCompletions?: number;
 }

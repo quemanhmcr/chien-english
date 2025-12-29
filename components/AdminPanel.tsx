@@ -3,7 +3,7 @@ import {
   ArrowLeft, Plus, Trash2, LogOut, LayoutDashboard, Wand2, Loader2,
   Book, Edit3, ChevronRight, Hash, Users, Shield, User as UserIcon,
   Mail, Calendar, BarChart3, TrendingUp, PieChart, Activity, Search,
-  ArrowUpRight, Filter, Download, Award, Clock, Star, Sparkles
+  ArrowUpRight, Filter, Download, Award, Clock, Star, Sparkles, AlertCircle
 } from 'lucide-react';
 import { Lesson, Exercise, UserProfile, AdminStats } from '../types';
 import { generateLessonContent } from '../services/mimoService';
@@ -524,27 +524,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="flex-1 p-6 md:p-14 overflow-y-auto max-w-7xl">
         {activeTab === 'overview' && (
           <div className="animate-fade-in space-y-12">
-            <header>
-              <h1 className="text-5xl font-heading font-black text-slate-900 tracking-tighter mb-4">Platform Intelligence</h1>
-              <p className="text-slate-500 text-lg font-medium">Real-time learning metrics and user engagement tokens.</p>
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h1 className="text-4xl font-heading font-black text-slate-900 tracking-tight mb-2">Bảng điều khiển</h1>
+                <p className="text-slate-500 text-base font-medium">Theo dõi tiến độ học viên và hiệu quả giảng dạy</p>
+              </div>
+              <button
+                onClick={fetchData}
+                disabled={isFetchingData}
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-black rounded-2xl transition-all text-xs uppercase tracking-widest"
+              >
+                {isFetchingData ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Refreshing...</>
+                ) : (
+                  <><Activity className="w-4 h-4" /> Refresh Data</>
+                )}
+              </button>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {[
-                { label: 'Total Students', value: stats?.totalStudents || 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', status: 'Healthy' },
-                { label: 'Active Lessons', value: stats?.totalLessons || 0, icon: Book, color: 'text-emerald-600', bg: 'bg-emerald-50', status: 'Active' },
-                { label: 'Completions', value: stats?.totalCompletions || 0, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', status: 'Growing' },
-                { label: 'Avg Success', value: `${stats?.avgScore || 0}%`, icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', status: (stats?.avgScore || 0) > 70 ? 'High' : 'Needs Focus' },
+                { label: 'Tổng học viên', value: stats?.totalStudents || 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', status: 'Ổn định' },
+                { label: 'Số bài học', value: stats?.totalLessons || 0, icon: Book, color: 'text-emerald-600', bg: 'bg-emerald-50', status: 'Hoạt động' },
+                { label: 'Lượt hoàn thành', value: stats?.totalCompletions || 0, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', status: `+${stats?.thisWeekCompletions || 0} tuần này` },
+                { label: 'Điểm TB', value: `${stats?.avgScore || 0}%`, icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', status: (stats?.avgScore || 0) > 70 ? 'Tốt' : 'Cần cải thiện' },
+                { label: 'Hoạt động hôm nay', value: stats?.activeToday || 0, icon: Clock, color: 'text-cyan-600', bg: 'bg-cyan-50', status: 'học viên' },
               ].map((s, idx) => (
-                <div key={idx} className="bg-white p-8 rounded-[2.25rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-                  <div className={`${s.bg} w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                    <s.icon className={`w-7 h-7 ${s.color}`} />
+                <div key={idx} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
+                  <div className={`${s.bg} w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                    <s.icon className={`w-6 h-6 ${s.color}`} />
                   </div>
-                  <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mb-1">{s.label}</p>
-                  <p className="text-4xl font-black text-slate-900">{s.value}</p>
-                  <div className="absolute top-8 right-8">
-                    <span className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-md border 
-                      ${s.status === 'Needs Focus' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-emerald-50 text-emerald-500 border-emerald-100'}`}>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">{s.label}</p>
+                  <p className="text-3xl font-black text-slate-900">{s.value}</p>
+                  <div className="absolute top-6 right-6">
+                    <span className={`text-[8px] font-bold uppercase tracking-tight px-2 py-1 rounded-md border 
+                      ${s.status === 'Cần cải thiện' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-emerald-50 text-emerald-500 border-emerald-100'}`}>
                       {s.status}
                     </span>
                   </div>
@@ -553,33 +567,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-              {/* Center Column: Activity & Insights */}
-              <div className="lg:col-span-2 space-y-10">
-                <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden group">
-                  <div className="flex items-center justify-between mb-10">
-                    <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                      <Activity className="w-6 h-6 text-indigo-600" /> Recent Activity
+              {/* Center Column: Hoạt động gần đây */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-lg font-black text-slate-900 flex items-center gap-3">
+                      <Activity className="w-5 h-5 text-indigo-600" /> Hoạt động gần đây
                     </h3>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {recentActivity.length === 0 ? (
-                      <div className="py-20 text-center text-slate-400 font-medium">No activity recorded yet.</div>
+                      <div className="py-16 text-center text-slate-400 font-medium">Chưa có hoạt động nào được ghi nhận.</div>
                     ) : (
                       recentActivity.map((act) => (
-                        <div key={act.id} className="flex items-center justify-between p-5 hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-100">
+                        <div key={act.id} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-100">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-indigo-600 font-black shadow-sm group-hover:bg-indigo-50 transition-colors">
-                              {act.profiles?.full_name?.charAt(0) || act.user_id.charAt(0)}
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${act.score >= 80 ? 'bg-emerald-500' : act.score >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                              }`}>
+                              {act.profiles?.full_name?.charAt(0) || '?'}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-900">{act.profiles?.full_name || 'Anonymous'}</p>
-                              <p className="text-xs text-slate-500">Mastered <span className="text-indigo-600 font-semibold">{act.lessons?.title || 'Unknown'}</span></p>
+                              <p className="font-bold text-slate-900 text-sm">{act.profiles?.full_name || 'Ẩn danh'}</p>
+                              <p className="text-xs text-slate-500">Hoàn thành <span className="text-indigo-600 font-semibold">{act.lessons?.title || 'Bài học'}</span></p>
                             </div>
                           </div>
                           <div className="text-right">
                             <span className={`text-sm font-black ${act.score >= 80 ? 'text-emerald-500' : act.score >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>{act.score}%</span>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{new Date(act.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-[9px] text-slate-400 font-medium mt-0.5">{new Date(act.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
                           </div>
                         </div>
                       ))
@@ -587,43 +602,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  {/* Difficult Lessons */}
-                  <div className="bg-rose-50/30 rounded-[3rem] p-10 border border-rose-100 relative overflow-hidden group">
-                    <h4 className="text-rose-900 font-black uppercase tracking-widest text-[10px] mb-8 flex items-center gap-2">
-                      <Shield className="w-4 h-4" /> Curriculum Fragility
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Bài học cần chú ý */}
+                  <div className="bg-rose-50/30 rounded-[2.5rem] p-8 border border-rose-100 relative overflow-hidden">
+                    <h4 className="text-rose-900 font-bold uppercase tracking-widest text-[10px] mb-6 flex items-center gap-2">
+                      <Shield className="w-4 h-4" /> Bài học cần chú ý
                     </h4>
-                    <h3 className="text-xl font-black text-slate-900 mb-6 font-heading tracking-tight">Focus Required</h3>
-                    <div className="space-y-4">
-                      {stats?.difficultLessons?.length === 0 ? (
-                        <p className="text-slate-400 text-sm">All units performing well.</p>
+                    <h3 className="text-lg font-black text-slate-900 mb-4">Cần cải thiện nội dung</h3>
+                    <div className="space-y-3">
+                      {!stats?.difficultLessons?.length ? (
+                        <p className="text-slate-400 text-sm italic">Tất cả bài học đang hoạt động tốt! ✨</p>
                       ) : (
                         stats?.difficultLessons.map(lesson => (
-                          <div key={lesson.id} className="bg-white p-4 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between hover:scale-[1.02] transition-transform cursor-default">
-                            <p className="font-bold text-slate-900 text-xs truncate pr-4">{lesson.title}</p>
-                            <span className="text-rose-600 font-black text-xs bg-rose-50 px-2.5 py-1 rounded-lg">{lesson.avgScore}%</span>
+                          <div key={lesson.id} className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm truncate pr-4">{lesson.title}</p>
+                              <p className="text-[10px] text-slate-400">{lesson.attempts || 0} lượt làm</p>
+                            </div>
+                            <span className="text-rose-600 font-black text-sm bg-rose-50 px-3 py-1.5 rounded-lg">{lesson.avgScore}%</span>
                           </div>
                         ))
                       )}
                     </div>
                   </div>
 
-                  {/* Top Learners */}
-                  <div className="bg-emerald-50/30 rounded-[3rem] p-10 border border-emerald-100 relative overflow-hidden group">
-                    <h4 className="text-emerald-900 font-black uppercase tracking-widest text-[10px] mb-8 flex items-center gap-2">
-                      <Star className="w-4 h-4" /> Community Leaders
+                  {/* Học viên xuất sắc */}
+                  <div className="bg-emerald-50/30 rounded-[2.5rem] p-8 border border-emerald-100 relative overflow-hidden">
+                    <h4 className="text-emerald-900 font-bold uppercase tracking-widest text-[10px] mb-6 flex items-center gap-2">
+                      <Star className="w-4 h-4" /> Học viên xuất sắc
                     </h4>
-                    <h3 className="text-xl font-black text-slate-900 mb-6 font-heading tracking-tight">Active Power</h3>
-                    <div className="space-y-4">
-                      {stats?.topLearners?.length === 0 ? (
-                        <p className="text-slate-400 text-sm">Awaiting first results.</p>
+                    <h3 className="text-lg font-black text-slate-900 mb-4">Top 5 chăm chỉ nhất</h3>
+                    <div className="space-y-3">
+                      {!stats?.topLearners?.length ? (
+                        <p className="text-slate-400 text-sm italic">Đang chờ kết quả đầu tiên...</p>
                       ) : (
-                        stats?.topLearners.map(user => (
-                          <div key={user.id} className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between hover:scale-[1.02] transition-transform cursor-default">
-                            <p className="font-bold text-slate-900 text-xs">{user.full_name}</p>
-                            <div className="text-right">
-                              <p className="text-emerald-600 font-black text-[10px]">{user.completions} units</p>
-                              <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">{user.avgScore}% avg</p>
+                        stats?.topLearners.map((user, idx) => (
+                          <div key={user.id} className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-shadow">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${idx === 0 ? 'bg-amber-100 text-amber-600' : idx === 1 ? 'bg-slate-100 text-slate-600' : 'bg-orange-50 text-orange-600'
+                              }`}>
+                              {idx + 1}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-bold text-slate-900 text-sm">{user.full_name}</p>
+                              <p className="text-[10px] text-slate-400">{user.completions} bài • {user.avgScore}% TB</p>
                             </div>
                           </div>
                         ))
@@ -633,45 +654,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              {/* Right Column: Platform Vitals */}
-              <div className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-3xl flex flex-col items-stretch">
-                <h3 className="text-2xl font-black mb-10 flex items-center gap-3 font-heading tracking-tighter">
-                  <TrendingUp className="w-6 h-6 text-indigo-400" /> Platform Vitals
-                </h3>
-
-                <div className="space-y-12 flex-1 flex flex-col">
-                  <div className="group">
-                    <div className="flex justify-between items-end mb-3">
-                      <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Global Performance</p>
-                      <span className="text-2xl font-black text-indigo-400">{stats?.avgScore || 0}%</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="bg-indigo-500 h-full transition-all duration-1000 group-hover:bg-indigo-400" style={{ width: `${stats?.avgScore || 0}%` }} />
-                    </div>
+              {/* Right Column: Tổng quan & Học viên cần hỗ trợ */}
+              <div className="space-y-8">
+                {/* At-Risk Students */}
+                <div className="bg-amber-50/50 rounded-[2.5rem] p-8 border border-amber-200 relative overflow-hidden">
+                  <h4 className="text-amber-800 font-bold uppercase tracking-widest text-[10px] mb-6 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" /> Học viên cần hỗ trợ
+                  </h4>
+                  <h3 className="text-lg font-black text-slate-900 mb-4">Điểm thấp hoặc không hoạt động</h3>
+                  <div className="space-y-3">
+                    {!stats?.atRiskStudents?.length ? (
+                      <p className="text-slate-400 text-sm italic">Tất cả học viên đang hoạt động tốt! 🎉</p>
+                    ) : (
+                      stats?.atRiskStudents.map(student => (
+                        <div key={student.id} className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm">{student.full_name}</p>
+                            <p className="text-[10px] text-amber-600 font-medium">{student.reason}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-black text-sm ${student.avgScore < 50 ? 'text-rose-500' : 'text-slate-600'}`}>
+                              {student.avgScore}%
+                            </span>
+                            {student.daysSinceActive > 0 && (
+                              <p className="text-[9px] text-slate-400">{student.daysSinceActive} ngày trước</p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
+                </div>
 
-                  <div className="p-8 bg-slate-900/50 rounded-3xl border border-slate-800/80 group hover:border-indigo-500/30 transition-colors">
-                    <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest mb-6">Execution Load</p>
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col items-center justify-center group-hover:scale-110 transition-transform">
-                        <span className="text-xl font-black text-white">{stats?.totalCompletions || 0}</span>
-                        <span className="text-[7px] font-black uppercase text-indigo-400">Fixed</span>
+                {/* Tổng quan hiệu suất */}
+                <div className="bg-slate-950 rounded-[2.5rem] p-8 text-white shadow-xl flex flex-col">
+                  <h3 className="text-xl font-black mb-8 flex items-center gap-3">
+                    <TrendingUp className="w-5 h-5 text-indigo-400" /> Tổng quan hiệu suất
+                  </h3>
+
+                  <div className="space-y-8 flex-1 flex flex-col">
+                    <div>
+                      <div className="flex justify-between items-end mb-3">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Điểm trung bình</p>
+                        <span className="text-2xl font-black text-indigo-400">{stats?.avgScore || 0}%</span>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-xs font-bold text-slate-300">Total Exercises</p>
-                        <p className="text-[10px] text-slate-500 mt-1 italic leading-relaxed">Platform throughput is nominal.</p>
+                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-1000" style={{ width: `${stats?.avgScore || 0}%` }} />
                       </div>
                     </div>
+
+                    <div className="p-6 bg-slate-900/50 rounded-2xl border border-slate-800">
+                      <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-4">Xu hướng tuần này</p>
+                      <div className="flex items-center gap-4">
+                        <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center ${(stats?.weeklyGrowth || 0) >= 0 ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-rose-500/20 border border-rose-500/30'
+                          }`}>
+                          <span className={`text-lg font-black ${(stats?.weeklyGrowth || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {(stats?.weeklyGrowth || 0) >= 0 ? '+' : ''}{stats?.weeklyGrowth || 0}%
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-slate-200">{stats?.thisWeekCompletions || 0} lượt hoàn thành</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">so với tuần trước</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('lessons')}
+                      className="w-full py-4 bg-white text-slate-950 hover:bg-slate-100 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm"
+                    >
+                      <Book className="w-4 h-4" /> Quản lý bài học
+                    </button>
                   </div>
-
-                  <div className="flex-1 min-h-[40px]" />
-
-                  <button
-                    onClick={() => setActiveTab('lessons')}
-                    className="w-full py-5 bg-white text-slate-950 hover:bg-slate-100 rounded-2xl font-black flex items-center justify-center gap-3 transition-all active:scale-[0.98] uppercase tracking-widest text-[10px]"
-                  >
-                    <Book className="w-4 h-4" /> Content Strategy Management
-                  </button>
                 </div>
               </div>
             </div>
