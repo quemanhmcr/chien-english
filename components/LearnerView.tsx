@@ -329,50 +329,44 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         </header>
 
         <main className="max-w-7xl mx-auto p-6 md:p-10">
-          {/* Welcome Section */}
-          <div className="mb-12 flex flex-col lg:flex-row gap-8 items-start lg:items-stretch">
-            <div className="flex-1 bg-white rounded-[2.5rem] p-10 border border-slate-200/60 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:opacity-[0.07] transition-all duration-700 -rotate-12 group-hover:rotate-0 translate-x-10 group-hover:translate-x-0">
-                <Sparkles className="w-64 h-64" />
-              </div>
-              <div className="relative z-10">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-black uppercase tracking-widest mb-6">
-                  <TrendingUp className="w-3.5 h-3.5" /> Stats Overview
-                </span>
-                <h2 className="text-4xl font-heading font-black text-slate-900 mb-4 tracking-tight">
-                  Chào mừng trở lại, {userProfile?.full_name ? userProfile.full_name.split(' ')[0] : 'bạn'}!
-                </h2>
-                <p className="text-lg text-slate-500 font-medium mb-8 max-w-lg leading-relaxed">Bạn đã hoàn thành <span className="text-indigo-600 font-black">{completedCount}</span> bài học với số điểm trung bình cực ấn tượng. Tiếp tục duy trì phong độ nhé!</p>
+          {/* Welcome Section - M3 Clean */}
+          <div className="mb-10 flex flex-col lg:flex-row gap-6 items-start lg:items-stretch">
+            <div className="flex-1 bg-white rounded-2xl p-8 border border-slate-100">
+              <p className="text-xs font-medium text-slate-400 mb-4 flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5" /> Tổng quan
+              </p>
+              <h2 className="text-2xl font-semibold text-slate-800 mb-2">
+                Chào mừng trở lại, {userProfile?.full_name ? userProfile.full_name.split(' ')[0] : 'bạn'}!
+              </h2>
+              <p className="text-slate-500 text-sm mb-6 max-w-lg leading-relaxed">
+                Bạn đã hoàn thành <span className="text-indigo-600 font-semibold">{completedCount}</span> bài học. Tiếp tục duy trì phong độ nhé!
+              </p>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                  <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 hover:border-indigo-200 transition-colors">
-                    <div className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Completed
-                    </div>
-                    <div className="text-2xl font-black text-slate-900">{completedCount} <span className="text-xs text-slate-400">Lessons</span></div>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 hover:border-indigo-200 transition-colors">
-                    <div className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                      <Award className="w-3 h-3 text-amber-500" /> Avg. Score
-                    </div>
-                    <div className="text-2xl font-black text-slate-900">{avgScore}%</div>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 hover:border-indigo-200 transition-colors col-span-2 sm:col-span-1">
-                    <div className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-indigo-500" /> Lessons Done
-                    </div>
-                    <div className="text-2xl font-black text-slate-900">{completedCount} <span className="text-xs text-slate-400">of {lessons.length}</span></div>
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <p className="text-xs font-medium text-slate-400 mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Hoàn thành
+                  </p>
+                  <p className="text-xl font-semibold text-slate-800">{completedCount} <span className="text-sm text-slate-400 font-normal">bài</span></p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <p className="text-xs font-medium text-slate-400 mb-1 flex items-center gap-1.5">
+                    <Award className="w-3 h-3 text-amber-500" /> Điểm TB
+                  </p>
+                  <p className="text-xl font-semibold text-slate-800">{avgScore}%</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-xl col-span-2 sm:col-span-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-indigo-500" /> Tiến độ
+                  </p>
+                  <p className="text-xl font-semibold text-slate-800">{completedCount} <span className="text-sm text-slate-400 font-normal">/ {lessons.length}</span></p>
                 </div>
               </div>
             </div>
 
-            <div className="w-full lg:w-80 bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-200 flex flex-col justify-between relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none group-hover:scale-125 transition-transform duration-1000">
-                <Trophy className="w-40 h-40" />
-              </div>
+            {/* Weekly Challenge - M3 Clean */}
+            <div className="w-full lg:w-72 bg-indigo-600 rounded-2xl p-6 text-white flex flex-col justify-between">
               {(() => {
-                // Calculate actual progress for intermediate lessons
                 const intermediateLessons = lessons.filter(l => l.level === 'Intermediate');
                 const completedIntermediate = intermediateLessons.filter(l =>
                   userProgress.some(p => p.lesson_id === l.id)
@@ -384,20 +378,20 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                 return (
                   <>
                     <div>
-                      <h3 className="text-xl font-heading font-black mb-2">Thử thách tuần</h3>
-                      <p className="text-indigo-100 text-sm font-medium leading-relaxed">
+                      <h3 className="text-lg font-semibold mb-2">Thử thách tuần</h3>
+                      <p className="text-indigo-100 text-sm leading-relaxed">
                         {intermediateLessons.length > 0
-                          ? `Hoàn thành ${targetCount} bài học cấp độ Intermediate để nhận huy hiệu "Fluent Speaker".`
-                          : 'Hoàn thành các bài học để mở khoá thử thách!'}
+                          ? `Hoàn thành ${targetCount} bài Intermediate để nhận huy hiệu.`
+                          : 'Hoàn thành các bài học để mở khoá!'}
                       </p>
                     </div>
-                    <div className="mt-8">
+                    <div className="mt-6">
                       <div className="flex justify-between items-end mb-2">
-                        <span className="text-xs font-black uppercase tracking-widest text-indigo-200">Progress</span>
-                        <span className="text-lg font-black italic">{clampedPct}%</span>
+                        <span className="text-xs font-medium text-indigo-200">Tiến độ</span>
+                        <span className="text-sm font-semibold">{clampedPct}%</span>
                       </div>
-                      <div className="h-3 bg-indigo-900/50 rounded-full overflow-hidden border border-white/10 p-0.5">
-                        <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${clampedPct}%` }}></div>
+                      <div className="h-2 bg-indigo-900/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${clampedPct}%` }}></div>
                       </div>
                     </div>
                   </>
@@ -406,41 +400,43 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-            <h3 className="text-2xl font-heading font-black text-slate-900 flex items-center gap-3">
-              Explore Lessons <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-lg text-xs font-black">{filteredLessons.length}</span>
+          {/* Lesson Filter - M3 Clean */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <h3 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+              Bài học <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-medium">{filteredLessons.length}</span>
             </h3>
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Tiêu đề, chủ đề..."
+                  placeholder="Tìm kiếm..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-2xl py-3 pl-11 pr-4 text-sm font-medium w-full sm:w-64 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
+                  className="bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm w-full sm:w-56 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none transition-all"
                 />
               </div>
-              <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex bg-white p-1 rounded-xl border border-slate-200">
                 {['All', 'Beginner', 'Intermediate', 'Hard'].map(lvl => (
                   <button
                     key={lvl}
                     onClick={() => setLevelFilter(lvl)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${levelFilter === lvl ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${levelFilter === lvl ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                   >
-                    {lvl}
+                    {lvl === 'All' ? 'Tất cả' : lvl}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Lesson Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredLessons.length === 0 ? (
-              <div className="col-span-full py-20 bg-white rounded-[3rem] border border-dashed border-slate-300 text-center">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                  <Book className="w-10 h-10 text-slate-300" />
+              <div className="col-span-full py-16 bg-white rounded-2xl border border-slate-100 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Book className="w-8 h-8 text-slate-300" />
                 </div>
                 <h4 className="text-xl font-black text-slate-800 mb-2">Không tìm thấy bài học nào</h4>
                 <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc độ khó để tìm thấy nhiều nội dung hơn.</p>
@@ -450,7 +446,6 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                 const isCompleted = userProgress.some(p => p.lesson_id === lesson.id);
                 const bestScore = Math.max(...userProgress.filter(p => p.lesson_id === lesson.id).map(p => p.score), 0);
 
-                // Calculate step-by-step progress
                 const completedSteps = exerciseProgress.filter(ep =>
                   lesson.exercises.some(ex => ex.id === ep.exercise_id)
                 ).length;
@@ -461,63 +456,54 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   <div
                     key={lesson.id}
                     onClick={() => setSelectedLesson(lesson)}
-                    className={`bg-white rounded-[2.5rem] p-8 border hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all cursor-pointer group relative flex flex-col h-full overflow-hidden ${isCompleted ? 'border-emerald-100' : isPartial ? 'border-amber-100' : 'border-slate-200/60'}`}
+                    className={`bg-white rounded-xl p-6 border hover:border-indigo-300 hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full ${isCompleted ? 'border-emerald-100' : isPartial ? 'border-amber-100' : 'border-slate-100'}`}
                   >
-                    {(isCompleted || isPartial) && (
-                      <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
-                        {isCompleted ? <CheckCircle2 className="w-40 h-40 text-emerald-600" /> : <Clock className="w-40 h-40 text-amber-600" />}
-                      </div>
-                    )}
-
-                    <div className="mb-8 flex-1">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${isCompleted ? 'bg-emerald-50 text-emerald-600' : isPartial ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white shadow-inner'}`}>
-                          {isCompleted ? <Trophy className="w-7 h-7" /> : isPartial ? <TrendingUp className="w-7 h-7" /> : <Book className="w-7 h-7" />}
+                    <div className="mb-4 flex-1">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isCompleted ? 'bg-emerald-50 text-emerald-600' : isPartial ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white'}`}>
+                          {isCompleted ? <Trophy className="w-5 h-5" /> : isPartial ? <TrendingUp className="w-5 h-5" /> : <Book className="w-5 h-5" />}
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${lesson.level === 'Beginner' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            lesson.level === 'Intermediate' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                              'bg-rose-50 text-rose-600 border-rose-100'
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${lesson.level === 'Beginner' ? 'bg-emerald-50 text-emerald-600' :
+                            lesson.level === 'Intermediate' ? 'bg-indigo-50 text-indigo-600' :
+                              'bg-rose-50 text-rose-600'
                             }`}>
                             {lesson.level}
-                          </div>
+                          </span>
                           {isPartial && (
-                            <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg uppercase tracking-wider border border-amber-100">
-                              Đang học {completedSteps}/{totalSteps}
+                            <span className="text-xs text-amber-500 font-medium">
+                              {completedSteps}/{totalSteps}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <h3 className="text-2xl font-heading font-black text-slate-900 leading-tight mb-3 group-hover:text-indigo-600 transition-colors">
+                      <h3 className="text-lg font-semibold text-slate-800 leading-snug mb-2 group-hover:text-indigo-600 transition-colors">
                         {lesson.title}
                       </h3>
-                      <p className="text-slate-500 text-sm leading-relaxed line-clamp-2 font-medium">
+                      <p className="text-slate-500 text-sm leading-relaxed line-clamp-2">
                         {lesson.description}
                       </p>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-50">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-wider">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>~15 Mins</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 font-black text-sm text-slate-800">
-                          {isCompleted ? (
-                            <span className="flex items-center gap-1 text-emerald-600 font-black">
-                              <Star className="w-4 h-4 fill-current" /> {bestScore}%
-                            </span>
-                          ) : isPartial ? (
-                            <span className="text-amber-600 font-black text-xs uppercase tracking-wider">Tiếp tục</span>
-                          ) : (
-                            <span className="text-slate-400 italic font-medium">New Lesson</span>
-                          )}
-                        </div>
+                    <div className="pt-4 border-t border-slate-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="flex items-center gap-1.5 text-slate-400 text-xs">
+                          <Clock className="w-3.5 h-3.5" /> ~15 phút
+                        </span>
+                        {isCompleted ? (
+                          <span className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
+                            <Star className="w-4 h-4 fill-current" /> {bestScore}%
+                          </span>
+                        ) : isPartial ? (
+                          <span className="text-amber-500 text-xs font-medium">Tiếp tục</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">Mới</span>
+                        )}
                       </div>
 
-                      <button className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black transition-all text-xs uppercase tracking-widest ${isCompleted ? 'bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700' : isPartial ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-slate-900 text-white hover:bg-indigo-600 shadow-xl shadow-slate-200'}`}>
-                        {isCompleted ? 'Practice Again' : isPartial ? 'Resume Journey' : 'Start Journey'}
+                      <button className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-all text-sm ${isCompleted ? 'bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700' : isPartial ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}>
+                        {isCompleted ? 'Ôn tập' : isPartial ? 'Tiếp tục' : 'Bắt đầu'}
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>

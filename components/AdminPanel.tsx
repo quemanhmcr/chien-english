@@ -455,67 +455,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <div className="bg-slate-950 w-full md:w-80 p-8 flex flex-col gap-10 sticky top-0 h-auto md:h-screen z-50 text-white overflow-y-auto">
-        <div className="flex items-center gap-4 text-indigo-400 py-2 border-b border-slate-900 pb-10">
-          <div className="bg-indigo-500 p-2.5 rounded-2xl shadow-2xl shadow-indigo-500/20"><LayoutDashboard className="w-8 h-8 text-white" /></div>
+      {/* Sidebar - M3 Clean */}
+      <div className="bg-slate-900 w-full md:w-72 p-6 flex flex-col gap-8 sticky top-0 h-auto md:h-screen z-50 text-white overflow-y-auto">
+        <div className="flex items-center gap-3 py-2 border-b border-slate-800 pb-6">
+          <div className="bg-indigo-600 p-2 rounded-xl"><LayoutDashboard className="w-6 h-6 text-white" /></div>
           <div>
-            <span className="font-heading font-black text-2xl tracking-tighter block leading-none">Management</span>
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1 block">Control Center</span>
+            <span className="font-semibold text-lg block">Admin Panel</span>
+            <span className="text-xs text-slate-500">Quản lý hệ thống</span>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-1">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl font-black transition-all group ${activeTab === 'overview' ? 'bg-white text-slate-950 shadow-xl' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'overview' ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
-            <div className="flex items-center gap-4">
-              <BarChart3 className="w-5 h-5" /> Overview
+            <div className="flex items-center gap-3">
+              <BarChart3 className="w-5 h-5" /> Tổng quan
             </div>
-            {activeTab === 'overview' && <ArrowUpRight className="w-4 h-4 opacity-50" />}
           </button>
           <button
             onClick={() => setActiveTab('lessons')}
-            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl font-black transition-all group ${activeTab === 'lessons' ? 'bg-white text-slate-950 shadow-xl' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'lessons' ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
-            <div className="flex items-center gap-4">
-              <Book className="w-5 h-5" /> Content
+            <div className="flex items-center gap-3">
+              <Book className="w-5 h-5" /> Bài học
             </div>
-            {activeTab === 'lessons' && <ArrowUpRight className="w-4 h-4 opacity-50" />}
           </button>
           <button
             onClick={() => setActiveTab('students')}
-            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl font-black transition-all group ${activeTab === 'students' ? 'bg-white text-slate-950 shadow-xl' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'students' ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
-            <div className="flex items-center gap-4">
-              <Users className="w-5 h-5" /> Students
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5" /> Học viên
             </div>
-            {activeTab === 'students' && <ArrowUpRight className="w-4 h-4 opacity-50" />}
           </button>
         </nav>
 
-        <div className="space-y-2 pt-10 border-t border-slate-900">
-          <div className="px-5 py-6 bg-slate-900/50 rounded-3xl border border-slate-900 mb-6 flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-900 font-black border-2 border-slate-800 shadow-xl">
+        <div className="space-y-1 pt-6 border-t border-slate-800">
+          <div className="px-4 py-4 bg-slate-800/50 rounded-xl mb-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-slate-900 font-semibold">
               {profile?.full_name?.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="text-sm font-black text-white">{profile?.full_name}</p>
-              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Admin</span>
+              <p className="text-sm font-medium text-white">{profile?.full_name}</p>
+              <span className="text-xs text-indigo-400">Admin</span>
             </div>
           </div>
           <button
             onClick={onBack}
-            className="w-full flex items-center gap-4 px-5 py-4 text-slate-500 hover:text-white hover:bg-slate-900 rounded-2xl font-black transition-all text-sm"
+            className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-medium transition-all text-sm"
           >
-            <ArrowLeft className="w-5 h-5" /> Return Home
+            <ArrowLeft className="w-5 h-5" /> Trang chủ
           </button>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-4 px-5 py-4 text-rose-500/60 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl font-black transition-all text-sm"
+            className="w-full flex items-center gap-3 px-4 py-3 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl font-medium transition-all text-sm"
           >
-            <LogOut className="w-5 h-5" /> Terminate Session
+            <LogOut className="w-5 h-5" /> Đăng xuất
           </button>
         </div>
       </div>
@@ -526,18 +523,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="animate-fade-in space-y-12">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h1 className="text-4xl font-heading font-black text-slate-900 tracking-tight mb-2">Bảng điều khiển</h1>
-                <p className="text-slate-500 text-base font-medium">Theo dõi tiến độ học viên và hiệu quả giảng dạy</p>
+                <h1 className="text-2xl font-semibold text-slate-800 mb-1">Tổng quan</h1>
+                <p className="text-slate-500 text-sm">Theo dõi tiến độ học viên và hiệu quả giảng dạy</p>
               </div>
               <button
                 onClick={fetchData}
                 disabled={isFetchingData}
-                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-black rounded-2xl transition-all text-xs uppercase tracking-widest"
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-xl transition-all text-sm"
               >
                 {isFetchingData ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Refreshing...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Đang tải...</>
                 ) : (
-                  <><Activity className="w-4 h-4" /> Refresh Data</>
+                  <><Activity className="w-4 h-4" /> Làm mới</>
                 )}
               </button>
             </header>
