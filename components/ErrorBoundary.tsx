@@ -74,8 +74,8 @@ export class ErrorBoundary extends Component<Props, State> {
                         {/* Support Link */}
                         <p className="mt-6 text-slate-500 text-xs">
                             Nếu lỗi vẫn tiếp tục, vui lòng liên hệ{' '}
-                            <a href="mailto:support@engpractice.pro" className="text-indigo-400 hover:text-indigo-300 underline">
-                                support@engpractice.pro
+                            <a href="mailto:support@chienenglish.com" className="text-indigo-400 hover:text-indigo-300 underline">
+                                support@chienenglish.com
                             </a>
                         </p>
                     </div>

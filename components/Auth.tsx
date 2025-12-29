@@ -120,7 +120,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthComplete }) => {
                                 <Flag className="w-8 h-8 text-white fill-current" />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-heading font-black text-white tracking-tighter">EngPractice <span className="text-indigo-500">Pro</span></h1>
+                                <h1 className="text-3xl font-heading font-black text-white tracking-tighter">Chien <span className="text-indigo-500">English</span></h1>
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Language Lab v4.0</p>
                             </div>
                         </div>

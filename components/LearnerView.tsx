@@ -231,7 +231,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                 </div>
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-heading font-black text-2xl text-slate-900 tracking-tight">EngPractice <span className="text-indigo-600">Pro</span></h1>
+                <h1 className="font-heading font-black text-2xl text-slate-900 tracking-tight">Chien <span className="text-indigo-600">English</span></h1>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Learning Management System</p>
               </div>
             </div>
