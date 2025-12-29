@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { AppState, EvaluationResult, Lesson, UserProfile as UserProfileType, UserProgress } from '../types';
 import { evaluateExercise } from '../services/mimoService';
-import { runLocalDiff, LocalDiffResult } from '../services/localDiff';
+
 import { ProgressBar } from './ProgressBar';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackSkeleton } from './FeedbackSkeleton';
@@ -44,9 +44,15 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   const [sessionScore, setSessionScore] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('AI is investigating...');
 
-  // Ghost Pipeline State - Instant feedback
+  // Ghost Pipeline State - Instant feedback with Material Motion 3
   const [showSkeleton, setShowSkeleton] = useState(false);
-  const [localDiff, setLocalDiff] = useState<LocalDiffResult | null>(null);
+  const [isSkeletonExiting, setIsSkeletonExiting] = useState(false);
+
+  // M3 Timing Constants
+  const SKELETON_MIN_DURATION = 400; // ms - minimum skeleton display time
+  const CROSSFADE_DURATION = 150; // ms - crossfade animation time
+  const SCROLL_DELAY = 50; // ms - delay scroll after content visible
+  const skeletonStartTimeRef = useRef<number>(0);
 
   const LOADING_MESSAGES = [
     "Analyzing grammar structure...",
@@ -58,6 +64,7 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
+  const skeletonRef = useRef<HTMLDivElement>(null);
 
   // Filtered lessons
   const filteredLessons = useMemo(() => {
@@ -105,7 +112,8 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
       setAppState(AppState.IDLE);
       setSessionScore(0);
       setShowSkeleton(false);
-      setLocalDiff(null);
+      setIsSkeletonExiting(false);
+
     }
   }, [selectedLesson, exerciseProgress]);
 
@@ -118,28 +126,57 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
     }
   }, [appState, currentIndex]);
 
-  // Auto-scroll to feedback
-  useEffect(() => {
-    if (appState === AppState.FEEDBACK && feedbackRef.current) {
-      feedbackRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [appState]);
+  // Auto-scroll removed - now handled manually with proper M3 timing
+
+  /**
+   * Performs M3-compliant crossfade from skeleton to content.
+   * Ensures minimum display time and smooth visual transition.
+   */
+  const performCrossfadeTransition = (finalResult: EvaluationResult, msgInterval: NodeJS.Timeout) => {
+    const elapsed = Date.now() - skeletonStartTimeRef.current;
+    const remaining = Math.max(0, SKELETON_MIN_DURATION - elapsed);
+
+    // Wait for minimum duration, then start crossfade
+    setTimeout(() => {
+      // Start exit animation
+      setIsSkeletonExiting(true);
+
+      // After exit animation completes, show content
+      setTimeout(() => {
+        setShowSkeleton(false);
+        setIsSkeletonExiting(false);
+        setAppState(AppState.FEEDBACK);
+        clearInterval(msgInterval);
+
+        // Delayed scroll for cognitive comfort
+        setTimeout(() => {
+          feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, SCROLL_DELAY);
+      }, CROSSFADE_DURATION);
+    }, remaining);
+  };
 
   const handleCheck = async () => {
     if (!userInput.trim() || !currentExercise) return;
 
-    // ========== GHOST PIPELINE ==========
+    // ========== GHOST PIPELINE (Material Motion 3) ==========
     // L1: Instant skeleton (0ms) - Show visual feedback immediately
+    skeletonStartTimeRef.current = Date.now();
     setShowSkeleton(true);
+    setIsSkeletonExiting(false);
     setAppState(AppState.EVALUATING);
 
-    // L2: Local diff (10-30ms) - Client-side word analysis
-    const localResult = runLocalDiff(userInput);
-    setLocalDiff(localResult);
+    // Scroll to skeleton immediately for user focus
+    setTimeout(() => {
+      skeletonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+
+
 
     // L3: API streaming - Full AI analysis
     // Cycle loading messages (for fallback if skeleton hides)
     let msgIdx = 0;
+    let hasTransitioned = false;
     setLoadingMessage(LOADING_MESSAGES[0]);
     const msgInterval = setInterval(() => {
       msgIdx = (msgIdx + 1) % LOADING_MESSAGES.length;
@@ -153,23 +190,25 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         currentExercise.type || 'translation',
         (partial) => {
           setFeedback(partial);
-          // Hide skeleton once AI starts streaming actual analysis
-          if (partial.detailedAnalysis && partial.detailedAnalysis.length > 0) {
-            setShowSkeleton(false);
-            setAppState(AppState.FEEDBACK);
-            clearInterval(msgInterval);
+          // Start M3 crossfade once AI has meaningful analysis
+          if (!hasTransitioned && partial.detailedAnalysis && partial.detailedAnalysis.length > 0) {
+            hasTransitioned = true;
+            performCrossfadeTransition(partial, msgInterval);
           }
         }
       );
+
       setFeedback(result);
-      setShowSkeleton(false);
-      // Always accumulate score (even for failed attempts) for accurate average
       setSessionScore(prev => prev + result.score);
-      setAppState(AppState.FEEDBACK);
-      clearInterval(msgInterval);
+
+      // If streaming didn't trigger transition, do it now
+      if (!hasTransitioned) {
+        performCrossfadeTransition(result, msgInterval);
+      }
     } catch (error) {
       console.error(error);
       setShowSkeleton(false);
+      setIsSkeletonExiting(false);
       setAppState(AppState.ERROR);
       clearInterval(msgInterval);
     }
@@ -563,120 +602,104 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
         </div>
 
         {currentExercise && (
-          <div className="space-y-12 animate-fade-in">
-            <div className="bg-slate-50/50 rounded-[3rem] p-10 sm:p-16 border border-slate-200/60 relative overflow-hidden group shadow-sm">
-              <div className="absolute top-0 right-0 p-12 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
-                <Sparkles className="w-64 h-64" />
+          <div className="space-y-8 animate-fade-in">
+            {/* Question Card - Clean, minimal */}
+            <div className="bg-white rounded-2xl p-8 border border-slate-100 relative">
+              {/* Subtle type indicators */}
+              <div className="flex items-center gap-2 mb-6">
+                <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium
+                  ${currentExercise.difficulty === 'Easy' ? 'bg-emerald-50 text-emerald-600' :
+                    currentExercise.difficulty === 'Medium' ? 'bg-amber-50 text-amber-600' :
+                      'bg-rose-50 text-rose-600'}`}>
+                  {currentExercise.difficulty}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 text-slate-500">
+                  {currentExercise.type === 'translation' && <Book className="w-3.5 h-3.5" />}
+                  {currentExercise.type === 'roleplay' && <MessageSquare className="w-3.5 h-3.5" />}
+                  {currentExercise.type === 'detective' && <Search className="w-3.5 h-3.5" />}
+                  {currentExercise.type === 'translation' ? 'Dịch câu' :
+                    currentExercise.type === 'roleplay' ? 'Đóng vai' : 'Sửa lỗi'}
+                </span>
               </div>
 
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-8">
-                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm
-                    ${currentExercise.difficulty === 'Easy' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                      currentExercise.difficulty === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                        'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                    {currentExercise.difficulty} {currentExercise.type === 'roleplay' ? 'Conversation' : 'Challenge'}
-                  </span>
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border bg-slate-100 text-slate-600 border-slate-200 shadow-sm">
-                    {currentExercise.type === 'translation' && <Book className="w-3 h-3 mr-2" />}
-                    {currentExercise.type === 'roleplay' && <MessageSquare className="w-3 h-3 mr-2" />}
-                    {currentExercise.type === 'detective' && <Search className="w-3 h-3 mr-2" />}
-                    {currentExercise.type === 'translation' ? 'Translation' :
-                      currentExercise.type === 'roleplay' ? 'Role-Play' : 'Detective'}
-                  </span>
-                </div>
+              {/* Context label for special types */}
+              {currentExercise.type === 'roleplay' && (
+                <p className="text-xs font-medium text-slate-400 mb-2">Tình huống & Mục tiêu</p>
+              )}
+              {currentExercise.type === 'detective' && (
+                <p className="text-xs font-medium text-slate-400 mb-2">Tìm và sửa lỗi sai</p>
+              )}
 
-                <div className="space-y-4">
-                  {currentExercise.type === 'roleplay' && (
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 block ml-1">Tình huống & Mục tiêu</span>
-                  )}
-                  {currentExercise.type === 'detective' && (
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 block ml-1">Tìm và sửa lỗi sai trong câu tiếng Anh dưới đây</span>
-                  )}
-                  <h2 className="text-4xl sm:text-5xl font-heading font-black text-slate-900 leading-[1.35] tracking-tight">
-                    {currentExercise.vietnamese}
-                  </h2>
-                </div>
+              {/* Question text - comfortable reading size */}
+              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-800 leading-relaxed">
+                {currentExercise.vietnamese}
+              </h2>
 
-                {currentExercise.hint && (
-                  <div className="mt-10 flex items-start gap-4 text-slate-600 bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-white shadow-xl italic text-base leading-relaxed animate-slide-up-slight">
-                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                      <TrendingUp className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 block mb-1 not-italic">Quick Tip</span>
-                      <p>{currentExercise.hint}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Hint - subtle, inline */}
+              {currentExercise.hint && (
+                <div className="mt-6 flex items-start gap-3 text-slate-500 text-sm">
+                  <Lightbulb className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                  <p className="leading-relaxed">{currentExercise.hint}</p>
+                </div>
+              )}
             </div>
 
-            <div className="relative">
-              {/* Ghost Pipeline: Instant Skeleton */}
+            {/* Response Area */}
+            <div className="relative" ref={skeletonRef}>
+              {/* Ghost Pipeline: Instant Skeleton with M3 Crossfade */}
               {showSkeleton && appState === AppState.EVALUATING && (
-                <FeedbackSkeleton
-                  localDiff={localDiff || undefined}
-                  exerciseType={currentExercise.type}
-                />
+                <FeedbackSkeleton isExiting={isSkeletonExiting} />
               )}
 
-              {/* Fallback loader (only if skeleton not shown) */}
+              {/* Fallback loader - professional styling */}
               {!showSkeleton && appState === AppState.EVALUATING && (!feedback || !feedback.detailedAnalysis || feedback.detailedAnalysis.length === 0) && (
-                <div className="w-full h-48 bg-slate-50/50 rounded-[3.5rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 animate-pulse">
-                  <div className="relative">
-                    <div className="absolute -inset-4 bg-indigo-500/20 rounded-full blur-xl animate-pulse"></div>
-                    <Loader2 className="w-12 h-12 text-indigo-500 animate-spin relative z-10" />
-                  </div>
-                  <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs animate-pulse">{loadingMessage}</p>
+                <div className="w-full py-12 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                  <p className="text-slate-400 text-sm font-medium">{loadingMessage}</p>
                 </div>
               )}
 
-              {/* Error State */}
+              {/* Error State - professional */}
               {appState === AppState.ERROR && (
-                <div className="w-full h-48 bg-rose-50/50 rounded-[3.5rem] border-4 border-dashed border-rose-200 flex flex-col items-center justify-center gap-6 p-8 text-center group">
-                  <div className="w-16 h-16 bg-white rounded-2xl shadow-lg border border-rose-100 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
-                    <Flag className="w-8 h-8" />
+                <div className="w-full py-12 bg-rose-50 rounded-2xl border border-rose-100 flex flex-col items-center justify-center gap-4 text-center px-8">
+                  <div className="w-12 h-12 bg-white rounded-xl border border-rose-100 flex items-center justify-center text-rose-400">
+                    <Flag className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-rose-900 mb-2 font-heading">Investigation Failed</h3>
-                    <p className="text-rose-600/70 text-sm font-medium">Có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau.</p>
+                    <h3 className="text-base font-semibold text-rose-800 mb-1">Không thể kết nối</h3>
+                    <p className="text-rose-500 text-sm">Có lỗi xảy ra. Vui lòng thử lại.</p>
                   </div>
                 </div>
               )}
 
-              {/* Feedback spacer (FeedbackCard rendered below) */}
+              {/* Feedback spacer */}
               {appState === AppState.FEEDBACK && feedback && (
                 <div className="w-full h-1" />
               )}
 
-              {/* Text Input (IDLE state) */}
+              {/* Text Input - subtle, clean */}
               {appState === AppState.IDLE && (
-                <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3.5rem] blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
-                  <textarea
-                    ref={inputRef}
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    disabled={appState !== AppState.IDLE}
-                    placeholder={
-                      currentExercise.type === 'roleplay'
-                        ? "Nhập câu nói của bạn trong tình huống này..."
-                        : currentExercise.type === 'detective'
-                          ? "Nhập câu đã sửa lỗi của bạn..."
-                          : "Nhập phần dịch Tiếng Anh của bạn..."
+                <textarea
+                  ref={inputRef}
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  disabled={appState !== AppState.IDLE}
+                  placeholder={
+                    currentExercise.type === 'roleplay'
+                      ? "Nhập câu trả lời của bạn..."
+                      : currentExercise.type === 'detective'
+                        ? "Nhập câu đã sửa..."
+                        : "Dịch sang tiếng Anh..."
+                  }
+                  spellCheck={false}
+                  className="w-full h-32 p-6 text-lg font-medium bg-white border-2 border-slate-100 rounded-2xl transition-all duration-200 resize-none outline-none placeholder:text-slate-300 text-slate-800 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (appState === AppState.IDLE) handleCheck();
                     }
-                    spellCheck={false}
-                    className={`relative w-full h-48 p-12 text-3xl font-bold bg-white border-4 rounded-[3.5rem] transition-all duration-500 resize-none outline-none
-                        ${appState === AppState.IDLE ? 'border-slate-100 focus:bg-white focus:border-indigo-600 focus:ring-[20px] focus:ring-indigo-600/5 text-slate-900 shadow-xl shadow-slate-200' : 'border-transparent bg-slate-50 text-slate-400'}`}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (appState === AppState.IDLE) handleCheck();
-                      }
-                    }}
-                  />
-                </div>
+                  }}
+                />
               )}
             </div>
 

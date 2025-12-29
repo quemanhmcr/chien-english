@@ -212,6 +212,65 @@ html {
   animation: scaleIn var(--duration-normal) var(--ease-emphasized-decelerate) forwards;
 }
 
+/* ===== SKELETON CROSSFADE ANIMATIONS ===== */
+/* Exit animation for skeleton */
+@keyframes skeletonExit {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.skeleton-exit {
+  animation: skeletonExit 150ms var(--ease-emphasized-accelerate) forwards;
+  pointer-events: none;
+}
+
+/* Enter animation for feedback content */
+@keyframes feedbackEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.feedback-enter {
+  animation: feedbackEnter 200ms var(--ease-emphasized-decelerate) forwards;
+}
+
+/* Container for layout stability during crossfade */
+.crossfade-container {
+  position: relative;
+  min-height: 200px;
+}
+
+.crossfade-container>.skeleton-layer,
+.crossfade-container>.content-layer {
+  width: 100%;
+}
+
+/* Slight slide up effect for feedback */
+@keyframes slideUpSlight {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up-slight {
+  animation: slideUpSlight var(--duration-slow) var(--ease-emphasized-decelerate) forwards;
+}
+
 /* ===== TRANSITION UTILITIES ===== */
 .transition-material {
   transition-property: all;
