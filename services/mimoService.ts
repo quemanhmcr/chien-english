@@ -2,7 +2,10 @@ import { EvaluationResult, Lesson, AnalysisToken } from "../types";
 import { TRANSLATION_EVAL_PROMPT, ROLE_PLAY_EVAL_PROMPT, DETECTIVE_EVAL_PROMPT, LESSON_GENERATION_PROMPT } from "./prompts";
 
 const API_KEY = import.meta.env.VITE_MIMO_API_KEY;
-const BASE_URL = "/api-mimo/v1/chat/completions";
+// Use proxy in development, direct API in production
+const BASE_URL = import.meta.env.DEV
+  ? "/api-mimo/v1/chat/completions"
+  : "https://api.xiaomimimo.com/v1/chat/completions";
 const MODEL = "mimo-v2-flash";
 
 /**
