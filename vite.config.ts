@@ -9,10 +9,17 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
       proxy: {
+        // Proxy API calls to MiMo during local development
+        // In production, this is handled by Cloudflare Function
         '/api-mimo': {
-          target: 'https://api.xiaomimimo.com',
+          target: 'https://api.xiaomimimo.com/v1',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api-mimo/, ''),
+          headers: {
+            // Use local env var for development
+            'Authorization': `Bearer ${env.MIMO_API_KEY || env.VITE_MIMO_API_KEY || ''}`,
+            'api-key': env.MIMO_API_KEY || env.VITE_MIMO_API_KEY || '',
+          },
         },
       },
     },
@@ -20,7 +27,6 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'import.meta.env.VITE_MIMO_API_KEY': JSON.stringify(env.VITE_MIMO_API_KEY)
     },
     resolve: {
       alias: {

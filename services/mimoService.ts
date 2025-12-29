@@ -1,11 +1,9 @@
 import { EvaluationResult, Lesson, AnalysisToken } from "../types";
 import { TRANSLATION_EVAL_PROMPT, ROLE_PLAY_EVAL_PROMPT, DETECTIVE_EVAL_PROMPT, LESSON_GENERATION_PROMPT } from "./prompts";
 
-const API_KEY = import.meta.env.VITE_MIMO_API_KEY;
-// Use proxy in development, direct API in production
-const BASE_URL = import.meta.env.DEV
-  ? "/api-mimo/v1/chat/completions"
-  : "https://api.xiaomimimo.com/v1/chat/completions";
+// API key is now handled server-side via Cloudflare Function
+// All requests go through the proxy - works in both dev and production
+const BASE_URL = "/api-mimo/chat/completions";
 const MODEL = "mimo-v2-flash";
 
 /**
@@ -195,8 +193,6 @@ async function fetchStreamingMiMo(messages: any[], onUpdate: (partialData: any) 
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`,
-      "api-key": API_KEY,
     },
     body: JSON.stringify({
       model: MODEL,
@@ -260,8 +256,6 @@ async function fetchMiMo(messages: any[], responseFormat?: any, retries = 3): Pr
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEY}`,
-          "api-key": API_KEY,
         },
         body: JSON.stringify({
           model: MODEL,
