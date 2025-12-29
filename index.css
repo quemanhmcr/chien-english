@@ -49,6 +49,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Cursor pointer for interactive elements */
+button,
+[role="button"],
+a,
+select,
+input[type="submit"],
+input[type="button"],
+input[type="checkbox"],
+input[type="radio"],
+label[for] {
+  cursor: pointer;
+}
+
 .markdown-content p,
 .markdown-content-takeaway p {
   margin: 0;
