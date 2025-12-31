@@ -129,26 +129,44 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
         const fullPrompt = `${LESSON_GENERATION_PROMPT}\n\n[USER TOPIC]\nTopic: "${state.aiTopic}". Generate exactly ${state.aiComplexity === 'auto' ? '12' : state.aiComplexity} exercises.`;
 
         try {
-            if (navigator.clipboard && window.isSecureContext) {
+            // Try modern Clipboard API first
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                 await navigator.clipboard.writeText(fullPrompt);
-            } else {
-                // Fallback for non-secure contexts or older browsers
-                const textArea = document.createElement("textarea");
-                textArea.value = fullPrompt;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                textArea.style.top = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                textArea.remove();
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+                return;
             }
+
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = fullPrompt;
+            // Prevent scrolling to bottom on iOS
+            textArea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            // Check if execCommand actually succeeded
+            const successful = document.execCommand('copy');
+            textArea.remove();
+
+            if (!successful) {
+                throw new Error('execCommand copy failed');
+            }
+
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
             console.error('Copy failed:', err);
-            alert('Không thể tự động copy. Vui lòng copy thủ công topic.');
+            // Show the prompt in a way user can manually copy
+            const manualCopy = window.confirm('Không thể tự động copy. Bấm OK để xem prompt và copy thủ công.');
+            if (manualCopy) {
+                const popup = window.open('', '_blank', 'width=800,height=600');
+                if (popup) {
+                    popup.document.write(`<html><head><title>Copy Prompt</title></head><body><pre style="white-space:pre-wrap;word-wrap:break-word;font-family:monospace;padding:20px;">${fullPrompt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`);
+                    popup.document.close();
+                }
+            }
         }
     };
 
@@ -404,11 +422,12 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                                                         <p className="text-xs text-slate-500 mt-0.5">Dán vào ChatGPT/Claude để tạo JSON</p>
                                                     </div>
                                                     <button
+                                                        type="button"
                                                         onClick={handleCopyPrompt}
                                                         disabled={!state.aiTopic.trim()}
                                                         className={`px-5 py-2.5 font-bold rounded-xl text-xs border transition-all ${isCopied
-                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                                                                : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50'
+                                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                                            : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50'
                                                             } disabled:opacity-50`}
                                                     >
                                                         {isCopied ? '✓ Copied!' : 'Copy Prompt'}
