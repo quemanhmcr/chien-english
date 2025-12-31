@@ -884,7 +884,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6 md:p-14 overflow-y-auto max-w-7xl">
+      <div className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl">
         {activeTab === 'overview' && (
           <div className="animate-fade-in space-y-12">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1099,7 +1099,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="animate-fade-in space-y-12">
             <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
               <div>
-                <h1 className="text-5xl font-heading font-black text-slate-900 tracking-tighter mb-4">Curriculum Control</h1>
+                <h1 className="text-3xl font-heading font-black text-slate-900 tracking-tighter mb-4">Curriculum Control</h1>
                 <p className="text-slate-500 text-lg font-medium">Design and organize your learning modules.</p>
               </div>
               <div className="flex gap-4 w-full lg:w-auto">
@@ -1109,13 +1109,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   <Sparkles className="w-4 h-4" /> AI Architect
                 </button>
-                <button className="flex-1 lg:flex-none px-8 py-5 bg-white border border-slate-200 text-slate-900 font-black rounded-3xl shadow-sm flex items-center justify-center gap-3 active:scale-95 transition-all text-xs uppercase tracking-widest">
-                  <Plus className="w-4 h-4" /> New Module
-                </button>
+
               </div>
             </header>
 
-            <div className="grid grid-cols-1 gap-12 items-start">
+            <div className="grid grid-cols-1 gap-8 items-start">
               <div className="space-y-6">
                 {lessons.length === 0 ? (
                   <div className="p-32 text-center bg-white rounded-[4rem] border-2 border-dashed border-slate-200">
@@ -1127,7 +1125,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 ) : (
                   lessons.map((lesson) => (
-                    <div key={lesson.id} className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center gap-8 group hover:border-indigo-500 transition-all hover:shadow-2xl hover:shadow-indigo-500/5 cursor-pointer" onClick={() => setViewingLessonId(lesson.id)}>
+                    <div key={lesson.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center gap-6 group hover:border-indigo-500 transition-all hover:shadow-2xl hover:shadow-indigo-500/5 cursor-pointer" onClick={() => setViewingLessonId(lesson.id)}>
                       <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-[1.5rem] flex-shrink-0 flex items-center justify-center font-black text-3xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-700 overflow-hidden relative">
                         <span className="relative z-10">{lesson.title.charAt(0)}</span>
                         <div className="absolute inset-0 bg-indigo-600 scale-0 group-hover:scale-110 transition-transform duration-700 rounded-full"></div>
@@ -1176,7 +1174,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="animate-fade-in space-y-12">
             <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
               <div>
-                <h1 className="text-5xl font-heading font-black text-slate-900 tracking-tighter mb-4">Identity Vault</h1>
+                <h1 className="text-3xl font-heading font-black text-slate-900 tracking-tighter mb-4">Identity Vault</h1>
                 <p className="text-slate-500 text-lg font-medium">Manage permissions and monitor student engagement records.</p>
               </div>
               <div className="relative w-full lg:w-96 group">
@@ -1191,7 +1189,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </header>
 
-            <div className="bg-white rounded-[3.5rem] border border-slate-200/60 shadow-xl shadow-slate-200/30 overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-xl shadow-slate-200/30 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>

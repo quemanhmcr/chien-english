@@ -49,6 +49,7 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
     const [currentStep, setCurrentStep] = useState<WizardStep>(1);
     const [state, setState] = useState<WizardState>(initialState);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
     const [animatingStep, setAnimatingStep] = useState<'enter' | 'exit' | null>('enter');
 
     // Reset on close
@@ -124,10 +125,31 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
         }
     };
 
-    const handleCopyPrompt = () => {
+    const handleCopyPrompt = async () => {
         const fullPrompt = `${LESSON_GENERATION_PROMPT}\n\n[USER TOPIC]\nTopic: "${state.aiTopic}". Generate exactly ${state.aiComplexity === 'auto' ? '12' : state.aiComplexity} exercises.`;
-        navigator.clipboard.writeText(fullPrompt);
-        alert('Đã copy quy tắc và chủ đề! Hãy paste vào ChatGPT/Claude để tạo bài học.');
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(fullPrompt);
+            } else {
+                // Fallback for non-secure contexts or older browsers
+                const textArea = document.createElement("textarea");
+                textArea.value = fullPrompt;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                textArea.remove();
+            }
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } catch (err) {
+            console.error('Copy failed:', err);
+            alert('Không thể tự động copy. Vui lòng copy thủ công topic.');
+        }
     };
 
     const handleImportJson = async () => {
@@ -243,10 +265,10 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                                 <div className="flex items-center gap-2">
                                     <div
                                         className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${idx + 1 < currentStep
-                                                ? 'bg-[var(--md-sys-color-wizard-complete)] text-white'
-                                                : idx + 1 === currentStep
-                                                    ? 'bg-[var(--md-sys-color-wizard-current)] text-white ring-4 ring-[var(--md-sys-color-wizard-current)]/20'
-                                                    : 'bg-[var(--md-sys-color-wizard-pending)] text-white/60'
+                                            ? 'bg-[var(--md-sys-color-wizard-complete)] text-white'
+                                            : idx + 1 === currentStep
+                                                ? 'bg-[var(--md-sys-color-wizard-current)] text-white ring-4 ring-[var(--md-sys-color-wizard-current)]/20'
+                                                : 'bg-[var(--md-sys-color-wizard-pending)] text-white/60'
                                             }`}
                                     >
                                         {idx + 1 < currentStep ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
@@ -281,8 +303,8 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                                     <button
                                         onClick={() => handleMethodSelect('ai')}
                                         className={`group p-6 rounded-3xl border-2 text-left transition-all duration-300 ${state.method === 'ai'
-                                                ? 'border-indigo-500 bg-[var(--md-sys-surface-wizard-active)] shadow-lg shadow-indigo-100'
-                                                : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'
+                                            ? 'border-indigo-500 bg-[var(--md-sys-surface-wizard-active)] shadow-lg shadow-indigo-100'
+                                            : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'
                                             }`}
                                         style={{ backgroundColor: state.method === 'ai' ? 'var(--md-sys-surface-wizard-active)' : 'var(--md-sys-color-surface-container-lowest)' }}
                                     >
@@ -305,8 +327,8 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                                     <button
                                         onClick={() => handleMethodSelect('manual')}
                                         className={`group p-6 rounded-3xl border-2 text-left transition-all duration-300 ${state.method === 'manual'
-                                                ? 'border-emerald-500 bg-emerald-50/50 shadow-lg shadow-emerald-100'
-                                                : 'border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md'
+                                            ? 'border-emerald-500 bg-emerald-50/50 shadow-lg shadow-emerald-100'
+                                            : 'border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md'
                                             }`}
                                         style={{ backgroundColor: state.method === 'manual' ? undefined : 'var(--md-sys-color-surface-container-lowest)' }}
                                     >
@@ -384,9 +406,12 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                                                     <button
                                                         onClick={handleCopyPrompt}
                                                         disabled={!state.aiTopic.trim()}
-                                                        className="px-5 py-2.5 bg-white text-slate-900 font-bold rounded-xl text-xs border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-all"
+                                                        className={`px-5 py-2.5 font-bold rounded-xl text-xs border transition-all ${isCopied
+                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                                                : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50'
+                                                            } disabled:opacity-50`}
                                                     >
-                                                        Copy Prompt
+                                                        {isCopied ? '✓ Copied!' : 'Copy Prompt'}
                                                     </button>
                                                 </div>
                                             </div>
