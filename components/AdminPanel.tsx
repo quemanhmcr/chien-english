@@ -393,78 +393,130 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           onInsert={() => handleInsertExerciseAt(idx)}
                         />
 
-                        {/* Inline Insert Form (if inserting at this index) */}
+                        {/* Inline Insert Form - M3 Eye-Comfort Design */}
                         {insertAtIndex === idx && (
-                          <div className="p-5 rounded-2xl border-2 border-indigo-400 mb-2 animate-scale-in" style={{ backgroundColor: 'var(--md-sys-surface-wizard-active)' }}>
-                            <div className="space-y-3">
+                          <div
+                            className="p-6 rounded-3xl mb-3 animate-scale-in shadow-lg"
+                            style={{
+                              backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                              border: '1px solid var(--md-sys-color-outline-variant)'
+                            }}
+                          >
+                            {/* Header */}
+                            <div className="flex items-center gap-3 mb-5 pb-4" style={{ borderBottom: '1px solid var(--md-sys-color-outline-variant)' }}>
+                              <div
+                                className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md"
+                                style={{ backgroundColor: 'var(--md-sys-color-primary)' }}
+                              >
+                                <Plus className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-base" style={{ color: 'var(--md-sys-color-on-surface)' }}>Thêm câu hỏi mới</h4>
+                                <p className="text-xs" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>Vị trí: #{idx + 1}</p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-5">
                               {/* Vietnamese Input */}
                               <div>
-                                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1.5 block">Nội dung</label>
+                                <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                                  Nội dung câu hỏi
+                                </label>
                                 <input
                                   type="text"
                                   autoFocus
                                   placeholder="Nhập nội dung tiếng Việt..."
                                   value={newExercise.vietnamese || ''}
                                   onChange={(e) => setNewExercise({ ...newExercise, vietnamese: e.target.value })}
-                                  className="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                                  style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                                  className="w-full p-4 rounded-2xl outline-none transition-all text-base"
+                                  style={{
+                                    backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                    border: '1px solid var(--md-sys-color-outline-variant)',
+                                    color: 'var(--md-sys-color-on-surface)'
+                                  }}
                                 />
                               </div>
 
                               {/* Type & Difficulty Row */}
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Loại bài tập</label>
+                                  <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                                    Loại bài tập
+                                  </label>
                                   <select
                                     value={newExercise.type || 'translation'}
                                     onChange={(e) => setNewExercise({ ...newExercise, type: e.target.value as any })}
-                                    className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                                    className="w-full p-3.5 rounded-2xl outline-none font-medium text-sm cursor-pointer transition-all"
+                                    style={{
+                                      backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                      border: '1px solid var(--md-sys-color-outline-variant)',
+                                      color: 'var(--md-sys-color-on-surface)'
+                                    }}
                                   >
-                                    <option value="translation">Translation (Dịch)</option>
-                                    <option value="roleplay">Role-play (Hội thoại)</option>
-                                    <option value="detective">Detective (Tìm lỗi)</option>
+                                    <option value="translation">📝 Translation</option>
+                                    <option value="roleplay">💬 Role-play</option>
+                                    <option value="detective">🔍 Detective</option>
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Độ khó</label>
+                                  <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                                    Độ khó
+                                  </label>
                                   <select
                                     value={newExercise.difficulty || 'Medium'}
                                     onChange={(e) => setNewExercise({ ...newExercise, difficulty: e.target.value as any })}
-                                    className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                                    className="w-full p-3.5 rounded-2xl outline-none font-medium text-sm cursor-pointer transition-all"
+                                    style={{
+                                      backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                      border: '1px solid var(--md-sys-color-outline-variant)',
+                                      color: 'var(--md-sys-color-on-surface)'
+                                    }}
                                   >
-                                    <option value="Easy">Easy (Dễ)</option>
-                                    <option value="Medium">Medium (Trung bình)</option>
-                                    <option value="Hard">Hard (Khó)</option>
+                                    <option value="Easy">🟢 Easy</option>
+                                    <option value="Medium">🟡 Medium</option>
+                                    <option value="Hard">🔴 Hard</option>
                                   </select>
                                 </div>
                               </div>
 
                               {/* Hint (Optional) */}
                               <div>
-                                <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Gợi ý (tùy chọn)</label>
+                                <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                                  Gợi ý <span className="font-normal opacity-60">(tùy chọn)</span>
+                                </label>
                                 <input
                                   type="text"
-                                  placeholder="VD: Sử dụng cấu trúc 'I would like to...'"
+                                  placeholder="VD: Chú ý thì của động từ..."
                                   value={newExercise.hint || ''}
                                   onChange={(e) => setNewExercise({ ...newExercise, hint: e.target.value })}
-                                  className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none text-sm"
-                                  style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                                  className="w-full p-3.5 rounded-2xl outline-none text-sm transition-all"
+                                  style={{
+                                    backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                    border: '1px solid var(--md-sys-color-outline-variant)',
+                                    color: 'var(--md-sys-color-on-surface)'
+                                  }}
                                 />
                               </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 mt-4 pt-3 border-t border-indigo-200">
+                            {/* Action Buttons - M3 Filled & Outlined */}
+                            <div className="flex gap-3 mt-6 pt-5" style={{ borderTop: '1px solid var(--md-sys-color-outline-variant)' }}>
                               <button
                                 onClick={confirmInsertExercise}
                                 disabled={!newExercise.vietnamese}
-                                className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                className="flex-1 px-5 py-3.5 text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                                style={{ backgroundColor: 'var(--md-sys-color-primary)' }}
                               >
                                 ✓ Thêm câu hỏi
                               </button>
                               <button
                                 onClick={() => setInsertAtIndex(null)}
-                                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold rounded-xl text-xs transition-all"
+                                className="px-5 py-3.5 font-bold rounded-2xl text-sm transition-all hover:opacity-80"
+                                style={{
+                                  backgroundColor: 'var(--md-sys-color-surface-container)',
+                                  color: 'var(--md-sys-color-on-surface-variant)',
+                                  border: '1px solid var(--md-sys-color-outline-variant)'
+                                }}
                               >
                                 Hủy
                               </button>
@@ -494,76 +546,128 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
 
                     {insertAtIndex === lesson.exercises.length && (
-                      <div className="p-5 rounded-2xl border-2 border-indigo-400 animate-scale-in" style={{ backgroundColor: 'var(--md-sys-surface-wizard-active)' }}>
-                        <div className="space-y-3">
+                      <div
+                        className="p-6 rounded-3xl animate-scale-in shadow-lg"
+                        style={{
+                          backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                          border: '1px solid var(--md-sys-color-outline-variant)'
+                        }}
+                      >
+                        {/* Header */}
+                        <div className="flex items-center gap-3 mb-5 pb-4" style={{ borderBottom: '1px solid var(--md-sys-color-outline-variant)' }}>
+                          <div
+                            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md"
+                            style={{ backgroundColor: 'var(--md-sys-color-primary)' }}
+                          >
+                            <Plus className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-base" style={{ color: 'var(--md-sys-color-on-surface)' }}>Thêm câu hỏi mới</h4>
+                            <p className="text-xs" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>Vị trí cuối cùng</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-5">
                           {/* Vietnamese Input */}
                           <div>
-                            <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1.5 block">Nội dung</label>
+                            <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                              Nội dung câu hỏi
+                            </label>
                             <input
                               type="text"
                               autoFocus
                               placeholder="Nhập nội dung tiếng Việt..."
                               value={newExercise.vietnamese || ''}
                               onChange={(e) => setNewExercise({ ...newExercise, vietnamese: e.target.value })}
-                              className="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                              style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                              className="w-full p-4 rounded-2xl outline-none transition-all text-base"
+                              style={{
+                                backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                border: '1px solid var(--md-sys-color-outline-variant)',
+                                color: 'var(--md-sys-color-on-surface)'
+                              }}
                             />
                           </div>
 
                           {/* Type & Difficulty Row */}
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Loại bài tập</label>
+                              <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                                Loại bài tập
+                              </label>
                               <select
                                 value={newExercise.type || 'translation'}
                                 onChange={(e) => setNewExercise({ ...newExercise, type: e.target.value as any })}
-                                className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                                className="w-full p-3.5 rounded-2xl outline-none font-medium text-sm cursor-pointer transition-all"
+                                style={{
+                                  backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                  border: '1px solid var(--md-sys-color-outline-variant)',
+                                  color: 'var(--md-sys-color-on-surface)'
+                                }}
                               >
-                                <option value="translation">Translation (Dịch)</option>
-                                <option value="roleplay">Role-play (Hội thoại)</option>
-                                <option value="detective">Detective (Tìm lỗi)</option>
+                                <option value="translation">📝 Translation</option>
+                                <option value="roleplay">💬 Role-play</option>
+                                <option value="detective">🔍 Detective</option>
                               </select>
                             </div>
                             <div>
-                              <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Độ khó</label>
+                              <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                                Độ khó
+                              </label>
                               <select
                                 value={newExercise.difficulty || 'Medium'}
                                 onChange={(e) => setNewExercise({ ...newExercise, difficulty: e.target.value as any })}
-                                className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                                className="w-full p-3.5 rounded-2xl outline-none font-medium text-sm cursor-pointer transition-all"
+                                style={{
+                                  backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                  border: '1px solid var(--md-sys-color-outline-variant)',
+                                  color: 'var(--md-sys-color-on-surface)'
+                                }}
                               >
-                                <option value="Easy">Easy (Dễ)</option>
-                                <option value="Medium">Medium (Trung bình)</option>
-                                <option value="Hard">Hard (Khó)</option>
+                                <option value="Easy">🟢 Easy</option>
+                                <option value="Medium">🟡 Medium</option>
+                                <option value="Hard">🔴 Hard</option>
                               </select>
                             </div>
                           </div>
 
                           {/* Hint (Optional) */}
                           <div>
-                            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Gợi ý (tùy chọn)</label>
+                            <label className="text-[11px] font-bold uppercase tracking-wide mb-2 block" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                              Gợi ý <span className="font-normal opacity-60">(tùy chọn)</span>
+                            </label>
                             <input
                               type="text"
-                              placeholder="VD: Sử dụng cấu trúc 'I would like to...'"
+                              placeholder="VD: Chú ý thì của động từ..."
                               value={newExercise.hint || ''}
                               onChange={(e) => setNewExercise({ ...newExercise, hint: e.target.value })}
-                              className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none text-sm"
-                              style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                              className="w-full p-3.5 rounded-2xl outline-none text-sm transition-all"
+                              style={{
+                                backgroundColor: 'var(--md-sys-color-surface-container-lowest)',
+                                border: '1px solid var(--md-sys-color-outline-variant)',
+                                color: 'var(--md-sys-color-on-surface)'
+                              }}
                             />
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 mt-4 pt-3 border-t border-indigo-200">
+                        {/* Action Buttons - M3 Filled & Outlined */}
+                        <div className="flex gap-3 mt-6 pt-5" style={{ borderTop: '1px solid var(--md-sys-color-outline-variant)' }}>
                           <button
                             onClick={confirmInsertExercise}
                             disabled={!newExercise.vietnamese}
-                            className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                            className="flex-1 px-5 py-3.5 text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                            style={{ backgroundColor: 'var(--md-sys-color-primary)' }}
                           >
                             ✓ Thêm câu hỏi
                           </button>
                           <button
                             onClick={() => setInsertAtIndex(null)}
-                            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold rounded-xl text-xs transition-all"
+                            className="px-5 py-3.5 font-bold rounded-2xl text-sm transition-all hover:opacity-80"
+                            style={{
+                              backgroundColor: 'var(--md-sys-color-surface-container)',
+                              color: 'var(--md-sys-color-on-surface-variant)',
+                              border: '1px solid var(--md-sys-color-outline-variant)'
+                            }}
                           >
                             Hủy
                           </button>
@@ -640,10 +744,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            </div >
+          </div >
+        </div >
+      </div >
     );
   }
 
