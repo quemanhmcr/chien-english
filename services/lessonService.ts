@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Lesson, Exercise } from '../types';
+import { updateGamificationStats } from './authService';
 
 export const getLessons = async (): Promise<Lesson[]> => {
     const { data: lessonsData, error: lessonsError } = await supabase
@@ -101,6 +102,11 @@ export const saveProgress = async (userId: string, lessonId: string, score: numb
     }
 
     console.log('[DB] Progress saved successfully:', data);
+
+    // Bonus XP for completing a lesson
+    if (score >= 70) {
+        await updateGamificationStats(userId, 50);
+    }
 };
 
 export const getUserProgress = async (userId: string) => {
@@ -130,6 +136,11 @@ export const saveExerciseProgress = async (userId: string, exerciseId: string, s
     if (error) {
         console.error('Error saving exercise progress:', error);
         throw error;
+    }
+
+    // XP for specific exercise (10 XP per correct answer)
+    if (score >= 70) {
+        await updateGamificationStats(userId, 10);
     }
 };
 

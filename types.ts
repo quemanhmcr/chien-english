@@ -90,6 +90,10 @@ export interface UserProfile {
   role: 'student' | 'admin';
   created_at: string;
   updated_at?: string;
+  xp: number;
+  level: number;
+  streak_current: number;
+  last_active_at?: string;
 }
 
 export interface UserProgress {

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Trophy, Settings, Flag, ArrowRight, Book, Star,
   ChevronLeft, LogOut, Search, Filter, TrendingUp, CheckCircle2,
-  Clock, Award, Sparkles, ChevronRight, MessageSquare, Lightbulb
+  Clock, Award, Sparkles, ChevronRight, MessageSquare, Lightbulb, Zap, Flame
 } from 'lucide-react';
 import { AppState, EvaluationResult, Lesson, UserProfile as UserProfileType, UserProgress } from '../types';
 import { evaluateExercise } from '../services/mimoService';
@@ -305,16 +305,33 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
               <div className="h-8 w-[1px] bg-slate-200 mx-2 hidden sm:block"></div>
 
               <div className="flex items-center gap-2">
+                {/* Gamification Stats (Desktop) */}
+                <div className="hidden md:flex items-center gap-3 mr-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl border border-rose-100 font-bold text-xs animate-in fade-in zoom-in" title="Daily Streak">
+                    <Flame className="w-3.5 h-3.5 fill-current" />
+                    <span>{userProfile?.streak_current || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 font-bold text-xs animate-in fade-in zoom-in delay-100" title="Total XP">
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>{userProfile?.xp || 0} XP</span>
+                  </div>
+                </div>
+
+                <div className="h-8 w-[1px] bg-slate-200 mx-2 hidden sm:block"></div>
+
                 <button
                   onClick={onOpenProfile}
                   className="flex items-center gap-3 hover:bg-slate-50 p-1.5 pr-4 rounded-2xl transition-all border border-transparent hover:border-slate-200"
                 >
-                  <div className="w-9 h-9 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
+                  <div className="w-9 h-9 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-semibold text-sm relative">
                     {userProfile?.full_name?.charAt(0).toUpperCase()}
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-white" title="Level">
+                      {userProfile?.level || 1}
+                    </div>
                   </div>
                   <div className="text-left hidden md:block">
                     <p className="text-xs font-black text-slate-900">{userProfile?.full_name}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{userProfile?.role}</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Lvl {userProfile?.level || 1} Student</p>
                   </div>
                 </button>
                 <button
@@ -690,7 +707,14 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
             </div>
 
             {appState === AppState.FEEDBACK && feedback && (
-              <div ref={feedbackRef} className="animate-slide-up-slight">
+              <div ref={feedbackRef} className="animate-slide-up-slight relative">
+                {/* XP Gained Animation */}
+                {(feedback.score >= 70 || feedback.isPass) && (
+                  <div className="absolute -top-6 right-4 sm:-top-12 sm:right-0 bg-yellow-400 text-yellow-900 font-black px-4 py-2 rounded-full shadow-lg animate-bounce flex items-center gap-2 border-2 border-white z-20">
+                    <Zap className="w-4 h-4 fill-current" /> +10 XP
+                  </div>
+                )}
+
                 <FeedbackCard
                   result={feedback}
                   exerciseType={currentExercise.type}

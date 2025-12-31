@@ -140,3 +140,54 @@ export const getUserDetailedProgress = async (userId: string) => {
     }
     return data;
 };
+
+export const updateGamificationStats = async (userId: string, xpGain: number) => {
+    try {
+        const profile = await getProfile(userId);
+        if (!profile) return null;
+
+        const now = new Date();
+        const lastActive = profile.last_active_at ? new Date(profile.last_active_at) : null;
+        let newStreak = profile.streak_current || 0;
+
+        // Streak Logic
+        if (lastActive) {
+            const tempNow = new Date(now);
+            const tempLast = new Date(lastActive);
+            // Reset hours to compare dates only
+            tempNow.setHours(0, 0, 0, 0);
+            tempLast.setHours(0, 0, 0, 0);
+
+            const diffTime = Math.abs(tempNow.getTime() - tempLast.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                newStreak += 1;
+            } else if (diffDays > 1) {
+                newStreak = 1; // Reset if missed more than 1 day
+            }
+            // If diffDays === 0 (same day), do nothing to streak
+        } else {
+            newStreak = 1;
+        }
+
+        // XP & Level Logic (Simple: Level = XP / 1000 + 1)
+        const newXP = (profile.xp || 0) + xpGain;
+        const newLevel = Math.floor(newXP / 1000) + 1;
+        const leveledUp = newLevel > (profile.level || 1);
+
+        const updates = {
+            xp: newXP,
+            level: newLevel,
+            streak_current: newStreak,
+            last_active_at: now.toISOString()
+        };
+
+        await updateProfile(userId, updates);
+
+        return { ...updates, leveledUp, xpGained: xpGain };
+    } catch (err) {
+        console.error('Error updating gamification stats:', err);
+        return null; // Fail silently to not block user flow
+    }
+};

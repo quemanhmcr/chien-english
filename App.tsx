@@ -170,7 +170,11 @@ const App: React.FC = () => {
             onOpenProfile={() => setShowProfile(true)}
             userProgress={userProgress}
             exerciseProgress={exerciseProgress}
-            onRefreshData={() => fetchData(session?.user?.id)}
+            onRefreshData={() => {
+              const uid = session?.user?.id;
+              fetchData(uid);
+              if (uid) fetchProfileData(uid);
+            }}
           />
         ) : (
           <AdminPanel

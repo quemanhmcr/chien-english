@@ -26,7 +26,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   role TEXT DEFAULT 'student' CHECK (role IN ('student', 'admin')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE
+  updated_at TIMESTAMP WITH TIME ZONE,
+  xp INTEGER DEFAULT 0,
+  level INTEGER DEFAULT 1,
+  streak_current INTEGER DEFAULT 0,
+  last_active_at TIMESTAMP WITH TIME ZONE
 );
 
 -- 4. Enable Row Level Security (RLS)
