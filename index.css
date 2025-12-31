@@ -39,6 +39,68 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  /* ===== MATERIAL DESIGN 3 TOKENS (Eye Comfort Optimized) ===== */
+  /* 
+   * Based on M3 color science for reduced eye strain:
+   * - Warmer undertones in surfaces
+   * - Lower saturation primary colors
+   * - Higher contrast for readability
+   * - Softer secondary/tertiary tones
+   */
+
+  /* M3 Surface Tones - Warm, low-contrast backgrounds */
+  --md-sys-color-surface: #FFFBFE;
+  --md-sys-color-surface-dim: #E7E0E5;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #FBF8FC;
+  --md-sys-color-surface-container: #F5F1F5;
+  --md-sys-color-surface-container-high: #EFEBEF;
+  --md-sys-color-surface-container-highest: #E9E5E9;
+  --md-sys-color-on-surface: #1C1B1E;
+  --md-sys-color-on-surface-variant: #49454E;
+
+  /* M3 Primary - Softer purple (reduced saturation) */
+  --md-sys-color-primary: #5B5891;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #E5DEFF;
+  --md-sys-color-on-primary-container: #17134A;
+
+  /* M3 Secondary - Muted lavender */
+  --md-sys-color-secondary: #5D5C72;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #E3E0F9;
+  --md-sys-color-on-secondary-container: #1A1A2C;
+
+  /* M3 Tertiary - Soft rose */
+  --md-sys-color-tertiary: #795369;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #FFD8EA;
+
+  /* M3 Error - Softened red */
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+
+  /* M3 Outline - Softer borders */
+  --md-sys-color-outline: #7A757F;
+  --md-sys-color-outline-variant: #CBC4CF;
+
+  /* ===== M3 WIZARD & SURFACE TOKENS ===== */
+
+  /* Eye-Comfort Surface Layering */
+  --md-sys-surface-wizard-base: #FEFDFB;
+  --md-sys-surface-wizard-step: #FFFBFE;
+  --md-sys-surface-wizard-active: #F5F0FF;
+
+  /* Wizard Progress Colors */
+  --md-sys-color-wizard-complete: #5B5891;
+  --md-sys-color-wizard-current: #795369;
+  --md-sys-color-wizard-pending: #CBC4CF;
+
+  /* Drag & Drop Elevation */
+  --md-sys-elevation-drag: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+  --md-sys-scale-dragging: 1.02;
 }
 
 /* ===== BASE STYLES ===== */
@@ -269,6 +331,84 @@ html {
 
 .animate-slide-up-slight {
   animation: slideUpSlight var(--duration-slow) var(--ease-emphasized-decelerate) forwards;
+}
+
+/* ===== WIZARD TRANSITIONS ===== */
+@keyframes stepEnter {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes stepExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+.wizard-step-enter {
+  animation: stepEnter 300ms var(--ease-emphasized-decelerate) forwards;
+}
+
+.wizard-step-exit {
+  animation: stepExit 200ms var(--ease-emphasized-accelerate) forwards;
+}
+
+/* ===== DRAG & DROP ===== */
+.drag-item {
+  transition: box-shadow 200ms var(--ease-emphasized),
+    transform 200ms var(--ease-emphasized),
+    opacity 200ms var(--ease-emphasized);
+  touch-action: none;
+}
+
+.drag-item.is-dragging {
+  box-shadow: var(--md-sys-elevation-drag);
+  transform: scale(var(--md-sys-scale-dragging));
+  z-index: 100;
+  opacity: 0.95;
+}
+
+.drag-item.is-over {
+  transform: translateY(-4px);
+}
+
+/* Cell-style insertion indicator */
+.insertion-zone {
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: height 150ms var(--ease-standard),
+    opacity 150ms var(--ease-standard);
+}
+
+.insertion-zone.is-visible {
+  height: 48px;
+  opacity: 1;
+}
+
+.insertion-zone-button {
+  transform: scale(0.9);
+  opacity: 0;
+  transition: transform 150ms var(--ease-emphasized-decelerate),
+    opacity 150ms var(--ease-emphasized-decelerate);
+}
+
+.insertion-zone.is-visible .insertion-zone-button {
+  transform: scale(1);
+  opacity: 1;
 }
 
 /* ===== TRANSITION UTILITIES ===== */

@@ -1,15 +1,31 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ArrowLeft, Plus, Trash2, LogOut, LayoutDashboard, Wand2, Loader2,
   Book, Edit3, ChevronRight, Hash, Users, Shield, User as UserIcon,
   Mail, Calendar, BarChart3, TrendingUp, PieChart, Activity, Search,
   ArrowUpRight, Filter, Download, Award, Clock, Star, Sparkles, AlertCircle
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable';
 import { Lesson, Exercise, UserProfile, AdminStats } from '../types';
-import { generateLessonContent } from '../services/mimoService';
-import { LESSON_GENERATION_PROMPT } from '../services/prompts';
 import { getAllProfiles, updateProfile, signOut, getUserDetailedProgress } from '../services/authService';
 import { getAdminStats, getRecentActivity, updateLesson, updateExercise } from '../services/lessonService';
+import { LessonWizard } from './LessonWizard';
+import { SortableExerciseItem } from './SortableExerciseItem';
+import { InsertionZone } from './InsertionZone';
 
 interface AdminPanelProps {
   lessons: Lesson[];
@@ -53,11 +69,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // View State
   const [viewingLessonId, setViewingLessonId] = useState<string | null>(null);
 
-  // Generation State
-  const [prompt, setPrompt] = useState('');
-  const [generationCount, setGenerationCount] = useState<number | 'auto'>('auto');
-  const [isGenerating, setIsGenerating] = useState(false);
-
   // Manual Exercise State
   const [newExercise, setNewExercise] = useState<Partial<Exercise>>({
     type: 'translation',
@@ -66,8 +77,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     hint: ''
   });
 
-  const [importJson, setImportJson] = useState('');
-  const [architectMode, setArchitectMode] = useState<'internal' | 'external'>('internal');
+  // Inline Editing State
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineEditValue, setInlineEditValue] = useState('');
+
+  // Insertion State for Cell-style
+  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
+
+  // Drag & Drop Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     fetchData();
@@ -113,68 +134,80 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleGenerateLesson = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim()) return;
+  // Drag & Drop Handler
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !viewingLessonId) return;
 
-    setIsGenerating(true);
+    const currentLesson = lessons.find(l => l.id === viewingLessonId);
+    if (!currentLesson) return;
+
+    const oldIndex = currentLesson.exercises.findIndex(e => e.id === active.id);
+    const newIndex = currentLesson.exercises.findIndex(e => e.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newExercises = arrayMove(currentLesson.exercises, oldIndex, newIndex);
+      onUpdateLesson({ ...currentLesson, exercises: newExercises });
+    }
+  }, [viewingLessonId, lessons, onUpdateLesson]);
+
+  // Inline Editing Handlers
+  const startInlineEdit = useCallback((exercise: Exercise) => {
+    setInlineEditId(exercise.id);
+    setInlineEditValue(exercise.vietnamese);
+  }, []);
+
+  const saveInlineEdit = useCallback(async () => {
+    if (!inlineEditId || !viewingLessonId) {
+      setInlineEditId(null);
+      return;
+    }
+    const trimmed = inlineEditValue.trim();
+    if (!trimmed) {
+      setInlineEditId(null);
+      return;
+    }
     try {
-      const generatedContent = await generateLessonContent(prompt, generationCount);
-      const newLesson = {
-        title: generatedContent.title,
-        description: generatedContent.description,
-        level: generatedContent.level,
-        exercises: generatedContent.exercises
-      };
-      await onAddLesson(newLesson as any);
-      setPrompt('');
-      alert(`Đã tạo bài học thành công! Gồm ${generatedContent.exercises.length} câu hỏi.`);
+      await updateExercise(inlineEditId, { vietnamese: trimmed });
+      const currentLesson = lessons.find(l => l.id === viewingLessonId);
+      if (currentLesson) {
+        const updatedExercises = currentLesson.exercises.map(ex =>
+          ex.id === inlineEditId ? { ...ex, vietnamese: trimmed } : ex
+        );
+        onUpdateLesson({ ...currentLesson, exercises: updatedExercises });
+      }
     } catch (err) {
       console.error(err);
-      alert('Có lỗi khi tạo bài học. Vui lòng thử lại.');
-    } finally {
-      setIsGenerating(false);
     }
-  };
+    setInlineEditId(null);
+  }, [inlineEditId, inlineEditValue, viewingLessonId, lessons, onUpdateLesson]);
 
-  const handleCopyPrompt = () => {
-    const fullPrompt = `${LESSON_GENERATION_PROMPT}\n\n[USER TOPIC]\nTopic: "${prompt}". Generate exactly ${generationCount === 'auto' ? '12' : generationCount} exercises.`;
-    navigator.clipboard.writeText(fullPrompt);
-    alert('Đã copy quy tắc và chủ đề! Hãy paste vào ChatGPT/Claude để tạo bài học.');
-  };
+  // Insert Exercise at Index
+  const handleInsertExerciseAt = useCallback((index: number) => {
+    setInsertAtIndex(index);
+    setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
+  }, []);
 
-  const handleImportJson = async () => {
-    if (!importJson.trim()) return;
-    try {
-      // Robust JSON extraction (handles markdown code blocks or preamble text)
-      let jsonToParse = importJson.trim();
-      const jsonMatch = jsonToParse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonToParse = jsonMatch[0];
-      }
+  const confirmInsertExercise = useCallback(() => {
+    if (!viewingLessonId || !newExercise.vietnamese || insertAtIndex === null) return;
+    const currentLesson = lessons.find(l => l.id === viewingLessonId);
+    if (!currentLesson) return;
 
-      const parsed = JSON.parse(jsonToParse);
+    const exerciseToAdd: Exercise = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `ex-${Date.now()}`,
+      type: newExercise.type as 'translation' | 'roleplay' | 'detective' || 'translation',
+      vietnamese: newExercise.vietnamese,
+      hint: newExercise.hint || undefined,
+      difficulty: newExercise.difficulty as 'Easy' | 'Medium' | 'Hard'
+    };
 
-      // Basic validation
-      if (!parsed.title || !parsed.exercises || !Array.isArray(parsed.exercises)) {
-        throw new Error('Thiếu trường bắt buộc (title hoặc exercises).');
-      }
+    const newExercises = [...currentLesson.exercises];
+    newExercises.splice(insertAtIndex, 0, exerciseToAdd);
+    onUpdateLesson({ ...currentLesson, exercises: newExercises });
 
-      // Check for 'vietnamese' key in exercises (LLM sometimes changes it to 'english' for detective)
-      const hasInvalidExercises = parsed.exercises.some((ex: any) => !ex.vietnamese);
-      if (hasInvalidExercises) {
-        throw new Error('Một số câu hỏi thiếu trường "vietnamese". Hãy đảm bảo LLM không tự ý đổi tên trường này.');
-      }
-
-      await onAddLesson(parsed as any);
-      setImportJson('');
-      setIsArchitectOpen(false);
-      alert('Đã nhập bài học thành công!');
-    } catch (err: any) {
-      alert(`Lỗi: ${err.message || 'JSON không đúng định dạng.'}`);
-      console.error(err);
-    }
-  };
+    setInsertAtIndex(null);
+    setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
+  }, [viewingLessonId, lessons, newExercise, insertAtIndex, onUpdateLesson]);
 
   const handleAddManualExercise = () => {
     if (!viewingLessonId || !newExercise.vietnamese) return;
@@ -228,24 +261,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleUpdateExerciseContent = async (exerciseId: string, updates: Partial<Exercise>) => {
-    if (!viewingLessonId) return;
     setIsUpdating(true);
     try {
       const success = await updateExercise(exerciseId, updates);
       if (success) {
-        const currentLesson = lessons.find(l => l.id === viewingLessonId);
-        if (currentLesson) {
-          const updatedExercises = currentLesson.exercises.map(ex =>
+        // Find the lesson containing this exercise (could be current or any lesson)
+        const targetLesson = viewingLessonId
+          ? lessons.find(l => l.id === viewingLessonId)
+          : lessons.find(l => l.exercises.some(ex => ex.id === exerciseId));
+
+        if (targetLesson) {
+          const updatedExercises = targetLesson.exercises.map(ex =>
             ex.id === exerciseId ? { ...ex, ...updates } : ex
           );
-          onUpdateLesson({ ...currentLesson, exercises: updatedExercises });
-          setEditingExercise(null);
+          onUpdateLesson({ ...targetLesson, exercises: updatedExercises });
         }
+        setEditingExercise(null);
       } else {
         alert('Không thể cập nhật câu hỏi.');
       }
     } catch (err) {
       console.error(err);
+      alert('Có lỗi xảy ra khi cập nhật.');
     } finally {
       setIsUpdating(false);
     }
@@ -338,45 +375,204 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </h3>
               </div>
 
-              <div className="space-y-4 mb-12">
-                {lesson.exercises.map((ex, idx) => (
-                  <div key={ex.id} className="group flex items-center gap-6 p-6 bg-slate-50/50 rounded-3xl border border-slate-200/60 hover:border-indigo-500 hover:bg-white transition-all duration-300">
-                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center font-black text-slate-900 text-sm shadow-sm border border-slate-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all duration-500">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{ex.vietnamese}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg border
-                                                ${ex.difficulty === 'Easy' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                            ex.difficulty === 'Medium' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                              'bg-rose-50 border-rose-100 text-rose-600'}`}>
-                          {ex.difficulty}
-                        </span>
-                        {ex.hint && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium italic">
-                            <TrendingUp className="w-3 h-3" /> Hint: {ex.hint}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={lesson.exercises.map(e => e.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-1 mb-12">
+                    {lesson.exercises.map((ex, idx) => (
+                      <React.Fragment key={ex.id}>
+                        {/* Cell-style insertion zone */}
+                        <InsertionZone
+                          index={idx}
+                          onInsert={() => handleInsertExerciseAt(idx)}
+                        />
+
+                        {/* Inline Insert Form (if inserting at this index) */}
+                        {insertAtIndex === idx && (
+                          <div className="p-5 rounded-2xl border-2 border-indigo-400 mb-2 animate-scale-in" style={{ backgroundColor: 'var(--md-sys-surface-wizard-active)' }}>
+                            <div className="space-y-3">
+                              {/* Vietnamese Input */}
+                              <div>
+                                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1.5 block">Nội dung</label>
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  placeholder="Nhập nội dung tiếng Việt..."
+                                  value={newExercise.vietnamese || ''}
+                                  onChange={(e) => setNewExercise({ ...newExercise, vietnamese: e.target.value })}
+                                  className="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                  style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                                />
+                              </div>
+
+                              {/* Type & Difficulty Row */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Loại bài tập</label>
+                                  <select
+                                    value={newExercise.type || 'translation'}
+                                    onChange={(e) => setNewExercise({ ...newExercise, type: e.target.value as any })}
+                                    className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                                  >
+                                    <option value="translation">Translation (Dịch)</option>
+                                    <option value="roleplay">Role-play (Hội thoại)</option>
+                                    <option value="detective">Detective (Tìm lỗi)</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Độ khó</label>
+                                  <select
+                                    value={newExercise.difficulty || 'Medium'}
+                                    onChange={(e) => setNewExercise({ ...newExercise, difficulty: e.target.value as any })}
+                                    className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                                  >
+                                    <option value="Easy">Easy (Dễ)</option>
+                                    <option value="Medium">Medium (Trung bình)</option>
+                                    <option value="Hard">Hard (Khó)</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Hint (Optional) */}
+                              <div>
+                                <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Gợi ý (tùy chọn)</label>
+                                <input
+                                  type="text"
+                                  placeholder="VD: Sử dụng cấu trúc 'I would like to...'"
+                                  value={newExercise.hint || ''}
+                                  onChange={(e) => setNewExercise({ ...newExercise, hint: e.target.value })}
+                                  className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none text-sm"
+                                  style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 mt-4 pt-3 border-t border-indigo-200">
+                              <button
+                                onClick={confirmInsertExercise}
+                                disabled={!newExercise.vietnamese}
+                                className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                              >
+                                ✓ Thêm câu hỏi
+                              </button>
+                              <button
+                                onClick={() => setInsertAtIndex(null)}
+                                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold rounded-xl text-xs transition-all"
+                              >
+                                Hủy
+                              </button>
+                            </div>
                           </div>
                         )}
+
+                        {/* Sortable Exercise Item */}
+                        <SortableExerciseItem
+                          exercise={ex}
+                          index={idx}
+                          onEdit={() => setEditingExercise(ex)}
+                          onDelete={() => handleDeleteExercise(ex.id)}
+                          onInlineEdit={() => startInlineEdit(ex)}
+                          isInlineEditing={inlineEditId === ex.id}
+                          inlineValue={inlineEditValue}
+                          onInlineChange={setInlineEditValue}
+                          onInlineSave={saveInlineEdit}
+                        />
+                      </React.Fragment>
+                    ))}
+
+                    {/* Final insertion zone at end */}
+                    <InsertionZone
+                      index={lesson.exercises.length}
+                      onInsert={() => handleInsertExerciseAt(lesson.exercises.length)}
+                    />
+
+                    {insertAtIndex === lesson.exercises.length && (
+                      <div className="p-5 rounded-2xl border-2 border-indigo-400 animate-scale-in" style={{ backgroundColor: 'var(--md-sys-surface-wizard-active)' }}>
+                        <div className="space-y-3">
+                          {/* Vietnamese Input */}
+                          <div>
+                            <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1.5 block">Nội dung</label>
+                            <input
+                              type="text"
+                              autoFocus
+                              placeholder="Nhập nội dung tiếng Việt..."
+                              value={newExercise.vietnamese || ''}
+                              onChange={(e) => setNewExercise({ ...newExercise, vietnamese: e.target.value })}
+                              className="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                              style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                            />
+                          </div>
+
+                          {/* Type & Difficulty Row */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Loại bài tập</label>
+                              <select
+                                value={newExercise.type || 'translation'}
+                                onChange={(e) => setNewExercise({ ...newExercise, type: e.target.value as any })}
+                                className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                              >
+                                <option value="translation">Translation (Dịch)</option>
+                                <option value="roleplay">Role-play (Hội thoại)</option>
+                                <option value="detective">Detective (Tìm lỗi)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Độ khó</label>
+                              <select
+                                value={newExercise.difficulty || 'Medium'}
+                                onChange={(e) => setNewExercise({ ...newExercise, difficulty: e.target.value as any })}
+                                className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-medium text-sm cursor-pointer"
+                              >
+                                <option value="Easy">Easy (Dễ)</option>
+                                <option value="Medium">Medium (Trung bình)</option>
+                                <option value="Hard">Hard (Khó)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Hint (Optional) */}
+                          <div>
+                            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Gợi ý (tùy chọn)</label>
+                            <input
+                              type="text"
+                              placeholder="VD: Sử dụng cấu trúc 'I would like to...'"
+                              value={newExercise.hint || ''}
+                              onChange={(e) => setNewExercise({ ...newExercise, hint: e.target.value })}
+                              className="w-full p-2.5 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none text-sm"
+                              style={{ backgroundColor: 'var(--md-sys-color-surface-container-lowest)' }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 mt-4 pt-3 border-t border-indigo-200">
+                          <button
+                            onClick={confirmInsertExercise}
+                            disabled={!newExercise.vietnamese}
+                            className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                          >
+                            ✓ Thêm câu hỏi
+                          </button>
+                          <button
+                            onClick={() => setInsertAtIndex(null)}
+                            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold rounded-xl text-xs transition-all"
+                          >
+                            Hủy
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button
-                        onClick={() => setEditingExercise(ex)}
-                        className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all"
-                      >
-                        <Edit3 className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteExercise(ex.id)}
-                        className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
 
               {/* Add Manual Form */}
               <div className="bg-indigo-50/50 rounded-[2.5rem] p-10 border border-indigo-100 relative overflow-hidden">
@@ -1089,147 +1285,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* AI Architect Modal */}
-      {isArchitectOpen && (
-        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-slate-900 w-full max-w-2xl rounded-[3.5rem] shadow-3xl border border-slate-800 overflow-hidden relative">
-            <button
-              onClick={() => setIsArchitectOpen(false)}
-              className="absolute top-8 right-8 w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-slate-400 transition-all hover:rotate-90"
-            >
-              <Plus className="w-6 h-6 rotate-45" />
-            </button>
-
-            <div className="p-12">
-              <div className="mb-10">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-500/20 mb-6 font-mono">
-                  <Sparkles className="w-3.5 h-3.5" /> Intelligence Suite v5.0
-                </div>
-                <h3 className="text-4xl font-heading font-black text-white tracking-tighter mb-4">Lesson Architect</h3>
-                <p className="text-slate-500 text-lg font-medium leading-relaxed">Choose your preferred engine to scaffold professional learning curriculum.</p>
-              </div>
-
-              {/* Tab Switcher */}
-              <div className="flex bg-slate-800/50 p-1.5 rounded-2xl mb-12 border border-slate-700/50 w-full max-w-sm mx-auto">
-                <button
-                  onClick={() => setArchitectMode('internal')}
-                  className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${architectMode === 'internal'
-                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20'
-                    : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                >
-                  Internal Engine
-                </button>
-                <button
-                  onClick={() => setArchitectMode('external')}
-                  className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${architectMode === 'external'
-                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20'
-                    : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                >
-                  External Support
-                </button>
-              </div>
-
-              {architectMode === 'internal' ? (
-                <form onSubmit={handleGenerateLesson} className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Learning Theme & Constraints</label>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      disabled={isGenerating}
-                      placeholder="e.g. Master professional email etiquette for Gen Z workplaces..."
-                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-[2rem] p-8 text-white placeholder:text-slate-700 outline-none focus:bg-slate-800 focus:border-indigo-500 transition-all resize-none h-48 text-lg font-medium shadow-inner"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Complexity</label>
-                      <select
-                        value={generationCount}
-                        onChange={(e) => setGenerationCount(e.target.value === 'auto' ? 'auto' : Number(e.target.value))}
-                        className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl py-5 px-6 text-white text-xs outline-none focus:bg-slate-800 cursor-pointer appearance-none font-black tracking-widest"
-                      >
-                        <option value="auto">SMART OPTIMIZATION</option>
-                        <option value="5">BASIC (05 TASKS)</option>
-                        <option value="10">STANDARD (10 TASKS)</option>
-                        <option value="15">ADVANCED (15 TASKS)</option>
-                      </select>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={isGenerating || !prompt.trim()}
-                      className="h-[68px] mt-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl flex items-center justify-center gap-4 transition-all shadow-2xl shadow-indigo-600/20 active:scale-95 disabled:opacity-50 uppercase tracking-widest text-xs"
-                    >
-                      {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-                      {isGenerating ? 'Architecting...' : 'Build Module'}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="p-8 bg-indigo-600/10 border border-indigo-500/20 rounded-[2.5rem] space-y-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
-                        <Download className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-white font-black text-lg mb-1 tracking-tight">Step 1: Export Instructions</h4>
-                        <p className="text-slate-400 text-sm font-medium leading-relaxed">Copy our pedagogical rules and your current topic to use with ChatGPT or Claude.</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <input
-                        type="text"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Current topic..."
-                        className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-indigo-500 transition-all font-medium"
-                      />
-                      <button
-                        onClick={handleCopyPrompt}
-                        className="px-8 py-3 bg-white text-slate-950 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-xl shadow-white/5 active:scale-95"
-                      >
-                        Copy Rules
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between ml-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Step 2: Manual JSON Import</label>
-                      <span className="flex items-center gap-2 text-[8px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">JSON PORTAL</span>
-                    </div>
-                    <div className="relative">
-                      <textarea
-                        value={importJson}
-                        onChange={(e) => setImportJson(e.target.value)}
-                        placeholder="Paste result from ChatGPT/Claude here..."
-                        className="w-full bg-slate-800/20 border border-slate-700/30 rounded-[2rem] p-8 text-slate-400 placeholder:text-slate-800 outline-none focus:bg-slate-800/40 focus:border-indigo-500/50 transition-all resize-none h-56 text-xs font-mono shadow-inner"
-                      />
-                      <button
-                        type="button"
-                        disabled={!importJson.trim()}
-                        onClick={handleImportJson}
-                        className="absolute bottom-6 right-6 px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-2xl transition-all shadow-2xl shadow-indigo-600/20 disabled:opacity-0 disabled:translate-y-4 uppercase tracking-widest"
-                      >
-                        Process & Save Lesson
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-12 pt-10 border-t border-slate-800 flex items-center gap-4 opacity-40">
-                <Shield className="w-5 h-5 text-indigo-400" />
-                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tight leading-relaxed">Xiaomi MiMo-V2 Hybrid Core. Advanced content integrity verified.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Lesson Wizard Modal */}
+      <LessonWizard
+        isOpen={isArchitectOpen}
+        onClose={() => setIsArchitectOpen(false)}
+        onAddLesson={onAddLesson}
+      />
     </div>
   );
 };
