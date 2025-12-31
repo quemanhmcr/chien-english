@@ -22,7 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Lesson, Exercise, UserProfile, AdminStats } from '../types';
 import { getAllProfiles, updateProfile, signOut, getUserDetailedProgress } from '../services/authService';
-import { getAdminStats, getRecentActivity, updateLesson, updateExercise } from '../services/lessonService';
+import { getAdminStats, getRecentActivity, updateLesson, updateExercise, insertExercise } from '../services/lessonService';
 import { LessonWizard } from './LessonWizard';
 import { SortableExerciseItem } from './SortableExerciseItem';
 import { InsertionZone } from './InsertionZone';
@@ -188,44 +188,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
   }, []);
 
-  const confirmInsertExercise = useCallback(() => {
-    if (!viewingLessonId || !newExercise.vietnamese || insertAtIndex === null) return;
+  const [isInsertingExercise, setIsInsertingExercise] = useState(false);
+
+  const confirmInsertExercise = useCallback(async () => {
+    if (!viewingLessonId || !newExercise.vietnamese || insertAtIndex === null || isInsertingExercise) return;
     const currentLesson = lessons.find(l => l.id === viewingLessonId);
     if (!currentLesson) return;
 
-    const exerciseToAdd: Exercise = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `ex-${Date.now()}`,
-      type: newExercise.type as 'translation' | 'roleplay' | 'detective' || 'translation',
-      vietnamese: newExercise.vietnamese,
-      hint: newExercise.hint || undefined,
-      difficulty: newExercise.difficulty as 'Easy' | 'Medium' | 'Hard'
-    };
+    setIsInsertingExercise(true);
+    try {
+      // Save to database first
+      const savedExercise = await insertExercise(viewingLessonId, {
+        type: newExercise.type as 'translation' | 'roleplay' | 'detective' || 'translation',
+        vietnamese: newExercise.vietnamese,
+        hint: newExercise.hint || undefined,
+        difficulty: newExercise.difficulty as 'Easy' | 'Medium' | 'Hard'
+      });
 
-    const newExercises = [...currentLesson.exercises];
-    newExercises.splice(insertAtIndex, 0, exerciseToAdd);
-    onUpdateLesson({ ...currentLesson, exercises: newExercises });
+      if (!savedExercise) {
+        alert('Không thể lưu câu hỏi vào database. Vui lòng thử lại.');
+        return;
+      }
 
-    setInsertAtIndex(null);
-    setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
-  }, [viewingLessonId, lessons, newExercise, insertAtIndex, onUpdateLesson]);
+      // Update local state with the DB-returned exercise (has proper ID)
+      const newExercises = [...currentLesson.exercises];
+      newExercises.splice(insertAtIndex, 0, savedExercise);
+      onUpdateLesson({ ...currentLesson, exercises: newExercises });
 
-  const handleAddManualExercise = () => {
-    if (!viewingLessonId || !newExercise.vietnamese) return;
+      setInsertAtIndex(null);
+      setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
+    } catch (err) {
+      console.error('Error inserting exercise:', err);
+      alert('Có lỗi xảy ra khi lưu câu hỏi.');
+    } finally {
+      setIsInsertingExercise(false);
+    }
+  }, [viewingLessonId, lessons, newExercise, insertAtIndex, onUpdateLesson, isInsertingExercise]);
+
+  const handleAddManualExercise = async () => {
+    if (!viewingLessonId || !newExercise.vietnamese || isInsertingExercise) return;
     const currentLesson = lessons.find(l => l.id === viewingLessonId);
     if (!currentLesson) return;
-    const exerciseToAdd: Exercise = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `ex-${Date.now()}`,
-      type: newExercise.type as 'translation' | 'roleplay' || 'translation',
-      vietnamese: newExercise.vietnamese,
-      hint: newExercise.hint || undefined,
-      difficulty: newExercise.difficulty as 'Easy' | 'Medium' | 'Hard'
-    };
-    const updatedLesson = {
-      ...currentLesson,
-      exercises: [...currentLesson.exercises, exerciseToAdd]
-    };
-    onUpdateLesson(updatedLesson);
-    setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
+
+    setIsInsertingExercise(true);
+    try {
+      // Save to database first
+      const savedExercise = await insertExercise(viewingLessonId, {
+        type: newExercise.type as 'translation' | 'roleplay' | 'detective' || 'translation',
+        vietnamese: newExercise.vietnamese,
+        hint: newExercise.hint || undefined,
+        difficulty: newExercise.difficulty as 'Easy' | 'Medium' | 'Hard'
+      });
+
+      if (!savedExercise) {
+        alert('Không thể lưu câu hỏi vào database. Vui lòng thử lại.');
+        return;
+      }
+
+      // Update local state with the DB-returned exercise
+      const updatedLesson = {
+        ...currentLesson,
+        exercises: [...currentLesson.exercises, savedExercise]
+      };
+      onUpdateLesson(updatedLesson);
+      setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
+    } catch (err) {
+      console.error('Error adding manual exercise:', err);
+      alert('Có lỗi xảy ra khi lưu câu hỏi.');
+    } finally {
+      setIsInsertingExercise(false);
+    }
   };
 
   const handleDeleteExercise = (exerciseId: string) => {
@@ -503,11 +535,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <div className="flex gap-3 mt-6 pt-5" style={{ borderTop: '1px solid var(--md-sys-color-outline-variant)' }}>
                               <button
                                 onClick={confirmInsertExercise}
-                                disabled={!newExercise.vietnamese}
-                                className="flex-1 px-5 py-3.5 text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                                disabled={!newExercise.vietnamese || isInsertingExercise}
+                                className="flex-1 px-5 py-3.5 text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                                 style={{ backgroundColor: 'var(--md-sys-color-primary)' }}
                               >
-                                ✓ Thêm câu hỏi
+                                {isInsertingExercise ? (
+                                  <><Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...</>
+                                ) : (
+                                  '✓ Thêm câu hỏi'
+                                )}
                               </button>
                               <button
                                 onClick={() => setInsertAtIndex(null)}
@@ -654,11 +690,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <div className="flex gap-3 mt-6 pt-5" style={{ borderTop: '1px solid var(--md-sys-color-outline-variant)' }}>
                           <button
                             onClick={confirmInsertExercise}
-                            disabled={!newExercise.vietnamese}
-                            className="flex-1 px-5 py-3.5 text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                            disabled={!newExercise.vietnamese || isInsertingExercise}
+                            className="flex-1 px-5 py-3.5 text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                             style={{ backgroundColor: 'var(--md-sys-color-primary)' }}
                           >
-                            ✓ Thêm câu hỏi
+                            {isInsertingExercise ? (
+                              <><Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...</>
+                            ) : (
+                              '✓ Thêm câu hỏi'
+                            )}
                           </button>
                           <button
                             onClick={() => setInsertAtIndex(null)}
@@ -737,10 +777,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <button
                     onClick={handleAddManualExercise}
-                    disabled={!newExercise.vietnamese}
-                    className="mt-8 px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:active:scale-100 active:scale-95 uppercase tracking-widest text-xs"
+                    disabled={!newExercise.vietnamese || isInsertingExercise}
+                    className="mt-8 px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:active:scale-100 active:scale-95 uppercase tracking-widest text-xs flex items-center justify-center gap-2"
                   >
-                    Save into lesson
+                    {isInsertingExercise ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...</>
+                    ) : (
+                      'Save into lesson'
+                    )}
                   </button>
                 </div>
               </div>

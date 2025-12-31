@@ -355,3 +355,21 @@ export const updateExercise = async (id: string, updates: Partial<Exercise>): Pr
     }
     return true;
 };
+
+// Insert a new exercise into an existing lesson
+export const insertExercise = async (
+    lessonId: string,
+    exercise: Omit<Exercise, 'id'>
+): Promise<Exercise | null> => {
+    const { data, error } = await supabase
+        .from('exercises')
+        .insert([{ ...exercise, lesson_id: lessonId }])
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error inserting exercise:', error);
+        return null;
+    }
+    return data as Exercise;
+};
