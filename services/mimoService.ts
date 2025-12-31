@@ -6,6 +6,110 @@ import { TRANSLATION_EVAL_PROMPT, ROLE_PLAY_EVAL_PROMPT, DETECTIVE_EVAL_PROMPT, 
 const BASE_URL = "/api-mimo/chat/completions";
 const MODEL = "mimo-v2-flash";
 
+// ============================================================================
+// CIRCUIT BREAKER PATTERN
+// Prevents cascading failures when the AI API is experiencing issues
+// ============================================================================
+interface CircuitBreakerState {
+  failures: number;
+  lastFailure: number;
+  isOpen: boolean;
+  successesSinceHalfOpen: number;
+}
+
+const circuitBreaker: CircuitBreakerState = {
+  failures: 0,
+  lastFailure: 0,
+  isOpen: false,
+  successesSinceHalfOpen: 0
+};
+
+const CIRCUIT_CONFIG = {
+  FAILURE_THRESHOLD: 5,      // Open circuit after 5 consecutive failures
+  RESET_TIMEOUT: 60000,      // Try again after 1 minute
+  SUCCESS_THRESHOLD: 2,      // Close circuit after 2 consecutive successes in half-open
+  HALF_OPEN_MAX_REQUESTS: 3  // Max concurrent requests in half-open state
+};
+
+/**
+ * Check if circuit breaker allows the request
+ */
+function canMakeRequest(): boolean {
+  const now = Date.now();
+
+  if (!circuitBreaker.isOpen) {
+    return true;
+  }
+
+  // Check if we should try half-open state
+  if (now - circuitBreaker.lastFailure >= CIRCUIT_CONFIG.RESET_TIMEOUT) {
+    // Enter half-open state - allow limited requests
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Record a successful request
+ */
+function recordSuccess(): void {
+  if (circuitBreaker.isOpen) {
+    circuitBreaker.successesSinceHalfOpen++;
+    if (circuitBreaker.successesSinceHalfOpen >= CIRCUIT_CONFIG.SUCCESS_THRESHOLD) {
+      // Close the circuit - service is healthy again
+      circuitBreaker.isOpen = false;
+      circuitBreaker.failures = 0;
+      circuitBreaker.successesSinceHalfOpen = 0;
+      if (import.meta.env.DEV) {
+        console.log('[CircuitBreaker] Circuit CLOSED - service recovered');
+      }
+    }
+  } else {
+    circuitBreaker.failures = 0;
+  }
+}
+
+/**
+ * Record a failed request
+ */
+function recordFailure(): void {
+  circuitBreaker.failures++;
+  circuitBreaker.lastFailure = Date.now();
+  circuitBreaker.successesSinceHalfOpen = 0;
+
+  if (circuitBreaker.failures >= CIRCUIT_CONFIG.FAILURE_THRESHOLD) {
+    circuitBreaker.isOpen = true;
+    if (import.meta.env.DEV) {
+      console.warn('[CircuitBreaker] Circuit OPEN - too many failures');
+    }
+  }
+}
+
+// ============================================================================
+// REQUEST COALESCING
+// Prevents duplicate identical requests from being sent simultaneously
+// ============================================================================
+const pendingRequests = new Map<string, Promise<any>>();
+
+/**
+ * Generate a cache key for request deduplication
+ */
+function generateRequestKey(messages: any[]): string {
+  return JSON.stringify(messages.slice(-2)); // Use last 2 messages for key
+}
+
+// ============================================================================
+// RETRY LOGIC WITH JITTER
+// Prevents thundering herd problem when service recovers
+// ============================================================================
+function getRetryDelay(attempt: number): number {
+  // Exponential backoff: 1s, 2s, 4s with random jitter up to 1s
+  const baseDelay = Math.pow(2, attempt - 1) * 1000;
+  const jitter = Math.random() * 1000;
+  return Math.min(baseDelay + jitter, 30000); // Cap at 30 seconds
+}
+
 /**
  * Field mapping for token optimization.
  * Maps compressed keys to original EvaluationResult keys.
@@ -244,65 +348,100 @@ async function fetchStreamingMiMo(messages: any[], onUpdate: (partialData: any) 
 }
 
 async function fetchMiMo(messages: any[], responseFormat?: any, retries = 3): Promise<any> {
+  // Circuit breaker check
+  if (!canMakeRequest()) {
+    throw new Error("Máy chủ AI đang gặp sự cố. Vui lòng thử lại sau 1 phút.");
+  }
+
+  // Request coalescing - check for identical pending request
+  const requestKey = generateRequestKey(messages);
+  const existingRequest = pendingRequests.get(requestKey);
+  if (existingRequest) {
+    if (import.meta.env.DEV) {
+      console.log('[MiMo] Coalescing duplicate request');
+    }
+    return existingRequest;
+  }
+
   const TIMEOUT_MS = 30000; // 30 seconds timeout
   let lastError: Error | null = null;
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const executeRequest = async (): Promise<any> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-      const response = await fetch(BASE_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages,
-          response_format: responseFormat,
-        }),
-        signal: controller.signal,
-      });
+        const response = await fetch(BASE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages,
+            response_format: responseFormat,
+          }),
+          signal: controller.signal,
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
 
-        // Handle specific error codes
-        if (response.status === 429) {
-          throw new Error("Quá nhiều yêu cầu. Vui lòng đợi một chút và thử lại.");
-        } else if (response.status === 503 || response.status === 502) {
-          throw new Error("Máy chủ AI đang bận. Đang thử lại...");
-        } else {
-          throw new Error(errorData.message || `Lỗi kết nối: ${response.status}`);
+          // Handle specific error codes
+          if (response.status === 429) {
+            recordFailure();
+            throw new Error("Quá nhiều yêu cầu. Vui lòng đợi một chút và thử lại.");
+          } else if (response.status === 503 || response.status === 502) {
+            recordFailure();
+            throw new Error("Máy chủ AI đang bận. Đang thử lại...");
+          } else {
+            throw new Error(errorData.message || `Lỗi kết nối: ${response.status}`);
+          }
+        }
+
+        // Success - record it and return
+        recordSuccess();
+        return await response.json();
+      } catch (error: any) {
+        lastError = error;
+
+        // Don't retry on abort (user cancelled) or client errors
+        if (error.name === 'AbortError') {
+          recordFailure();
+          throw new Error("Kết nối quá lâu. Vui lòng kiểm tra mạng và thử lại.");
+        }
+
+        // Log retry attempt (only in development)
+        if (import.meta.env.DEV) {
+          console.warn(`[MiMo API] Attempt ${attempt}/${retries} failed:`, error.message);
+        }
+
+        // Record failure for circuit breaker
+        recordFailure();
+
+        // Wait before retry with jitter
+        if (attempt < retries) {
+          const delay = getRetryDelay(attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
-
-      return await response.json();
-    } catch (error: any) {
-      lastError = error;
-
-      // Don't retry on abort (user cancelled) or client errors
-      if (error.name === 'AbortError') {
-        throw new Error("Kết nối quá lâu. Vui lòng kiểm tra mạng và thử lại.");
-      }
-
-      // Log retry attempt (only in development)
-      if (import.meta.env.DEV) {
-        console.warn(`[MiMo API] Attempt ${attempt}/${retries} failed:`, error.message);
-      }
-
-      // Wait before retry (exponential backoff: 1s, 2s, 4s)
-      if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
-      }
     }
-  }
 
-  // All retries failed
-  throw lastError || new Error("Không thể kết nối máy chủ AI. Vui lòng thử lại sau.");
+    // All retries failed
+    throw lastError || new Error("Không thể kết nối máy chủ AI. Vui lòng thử lại sau.");
+  };
+
+  // Store the promise for coalescing
+  const requestPromise = executeRequest().finally(() => {
+    // Clean up pending request after completion
+    pendingRequests.delete(requestKey);
+  });
+
+  pendingRequests.set(requestKey, requestPromise);
+  return requestPromise;
 }
 
 /**

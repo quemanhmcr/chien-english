@@ -1,5 +1,11 @@
 import { supabase } from './supabaseClient';
 import { UserProfile } from '../types';
+import { cacheManager, CacheKeys, CacheTTL } from './cacheManager';
+
+interface FetchOptions {
+    useCache?: boolean;
+    forceRefresh?: boolean;
+}
 
 const getRedirectUrl = () => {
     return window.location.origin;
@@ -32,6 +38,9 @@ export const signIn = async (email: string, password: string) => {
 };
 
 export const signOut = async () => {
+    // Clear all cached data on sign out for security
+    cacheManager.clear();
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
 };
@@ -50,7 +59,14 @@ export const updatePassword = async (newPassword: string) => {
     if (error) throw error;
 };
 
-export const getProfile = async (userId: string): Promise<UserProfile | null> => {
+export const getProfile = async (userId: string, options: FetchOptions = {}): Promise<UserProfile | null> => {
+    const { useCache = true, forceRefresh = false } = options;
+
+    if (useCache && !forceRefresh) {
+        const cached = cacheManager.get<UserProfile>(CacheKeys.userProfile(userId));
+        if (cached) return cached;
+    }
+
     try {
         const { data, error } = await supabase
             .from('profiles')
@@ -60,10 +76,15 @@ export const getProfile = async (userId: string): Promise<UserProfile | null> =>
 
         if (error) {
             if (error.code === 'PGRST116') {
-                console.log('Profile not found for user:', userId);
+                if (import.meta.env.DEV) console.log('Profile not found for user:', userId);
                 return null;
             }
             throw error;
+        }
+
+        // Cache the profile
+        if (data) {
+            cacheManager.set(CacheKeys.userProfile(userId), data, { ttl: CacheTTL.PROFILES });
         }
         return data;
     } catch (error) {
@@ -76,7 +97,7 @@ export const ensureProfile = async (userId: string, metadata?: any): Promise<Use
     const profile = await getProfile(userId);
     if (profile) return profile;
 
-    console.log('Attempting to create missing profile for user:', userId);
+    if (import.meta.env.DEV) console.log('Attempting to create missing profile for user:', userId);
     const { data, error } = await supabase
         .from('profiles')
         .insert([
@@ -107,19 +128,33 @@ export const updateProfile = async (userId: string, updates: Partial<UserProfile
         .eq('id', userId);
 
     if (error) throw error;
+
+    // Invalidate cached profile and update optimistically
+    const cached = cacheManager.get<UserProfile>(CacheKeys.userProfile(userId));
+    if (cached) {
+        cacheManager.set(CacheKeys.userProfile(userId), { ...cached, ...updates }, { ttl: CacheTTL.PROFILES });
+    }
 };
 
-export const getAllProfiles = async (): Promise<UserProfile[]> => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+export const getAllProfiles = async (options: FetchOptions = {}): Promise<UserProfile[]> => {
+    const { useCache = true, forceRefresh = false } = options;
 
-    if (error) {
-        console.error('Error fetching all profiles:', error);
-        return [];
-    }
-    return data || [];
+    return cacheManager.getOrFetch(
+        CacheKeys.allProfiles(),
+        async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching all profiles:', error);
+                return [];
+            }
+            return data || [];
+        },
+        { ttl: CacheTTL.PROFILES, forceRefresh: forceRefresh || !useCache }
+    );
 };
 export const getUserDetailedProgress = async (userId: string) => {
     const { data, error } = await supabase

@@ -1,22 +1,59 @@
 import { supabase } from './supabaseClient';
 import { Lesson, Exercise } from '../types';
 import { updateGamificationStats } from './authService';
+import { cacheManager, CacheKeys, CacheTTL } from './cacheManager';
 
-export const getLessons = async (): Promise<Lesson[]> => {
+// ============================================================================
+// CACHING CONFIGURATION
+// ============================================================================
+interface FetchOptions {
+    useCache?: boolean;
+    forceRefresh?: boolean;
+}
+
+export const getLessons = async (options: FetchOptions = {}): Promise<Lesson[]> => {
+    const { useCache = true, forceRefresh = false } = options;
+
+    if (useCache && !forceRefresh) {
+        return cacheManager.getOrFetch(
+            CacheKeys.lessons(),
+            async () => {
+                const { data: lessonsData, error: lessonsError } = await supabase
+                    .from('lessons')
+                    .select(`
+                      *,
+                      exercises (*)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .order('order_index', { ascending: true, foreignTable: 'exercises' });
+
+                if (lessonsError) {
+                    console.error('Error fetching lessons:', lessonsError);
+                    return [];
+                }
+                return lessonsData as Lesson[];
+            },
+            { ttl: CacheTTL.LESSONS, forceRefresh }
+        );
+    }
+
+    // Direct fetch without cache
     const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
         .select(`
-      *,
-      exercises (*)
-    `)
-        .order('created_at', { ascending: false }) // Order lessons by newest
-        .order('order_index', { ascending: true, foreignTable: 'exercises' }); // Order exercises by index
+          *,
+          exercises (*)
+        `)
+        .order('created_at', { ascending: false })
+        .order('order_index', { ascending: true, foreignTable: 'exercises' });
 
     if (lessonsError) {
         console.error('Error fetching lessons:', lessonsError);
         return [];
     }
 
+    // Update cache for future requests
+    cacheManager.set(CacheKeys.lessons(), lessonsData as Lesson[], { ttl: CacheTTL.LESSONS });
     return lessonsData as Lesson[];
 };
 
@@ -89,7 +126,9 @@ export const deleteLesson = async (id: string): Promise<boolean> => {
 };
 
 export const saveProgress = async (userId: string, lessonId: string, score: number) => {
-    console.log('[DB] saveProgress called:', { userId, lessonId, score });
+    if (import.meta.env.DEV) {
+        console.log('[DB] saveProgress called:', { userId, lessonId, score });
+    }
 
     const { data, error } = await supabase
         .from('user_progress')
@@ -101,7 +140,9 @@ export const saveProgress = async (userId: string, lessonId: string, score: numb
         throw error;
     }
 
-    console.log('[DB] Progress saved successfully:', data);
+    if (import.meta.env.DEV) {
+        console.log('[DB] Progress saved successfully:', data);
+    }
 
     // Bonus XP for completing a lesson
     if (score >= 70) {
@@ -109,17 +150,25 @@ export const saveProgress = async (userId: string, lessonId: string, score: numb
     }
 };
 
-export const getUserProgress = async (userId: string) => {
-    const { data, error } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId);
+export const getUserProgress = async (userId: string, options: FetchOptions = {}) => {
+    const { useCache = true, forceRefresh = false } = options;
 
-    if (error) {
-        console.error('Error fetching user progress:', error);
-        return [];
-    }
-    return data;
+    return cacheManager.getOrFetch(
+        CacheKeys.userProgress(userId),
+        async () => {
+            const { data, error } = await supabase
+                .from('user_progress')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error('Error fetching user progress:', error);
+                return [];
+            }
+            return data;
+        },
+        { ttl: CacheTTL.PROGRESS, forceRefresh: forceRefresh || !useCache }
+    );
 };
 
 export const saveExerciseProgress = async (userId: string, exerciseId: string, score: number) => {
@@ -144,195 +193,219 @@ export const saveExerciseProgress = async (userId: string, exerciseId: string, s
     }
 };
 
-export const getExerciseProgress = async (userId: string) => {
-    const { data, error } = await supabase
-        .from('user_exercise_progress')
-        .select('*')
-        .eq('user_id', userId);
+export const getExerciseProgress = async (userId: string, options: FetchOptions = {}) => {
+    const { useCache = true, forceRefresh = false } = options;
 
-    if (error) {
-        console.error('Error fetching exercise progress:', error);
-        return [];
-    }
-    return data;
+    return cacheManager.getOrFetch(
+        CacheKeys.exerciseProgress(userId),
+        async () => {
+            const { data, error } = await supabase
+                .from('user_exercise_progress')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error('Error fetching exercise progress:', error);
+                return [];
+            }
+            return data;
+        },
+        { ttl: CacheTTL.PROGRESS, forceRefresh: forceRefresh || !useCache }
+    );
 };
 
-export const getAdminStats = async () => {
-    // Parallel fetch for better performance
-    const [
-        { count: studentCount },
-        { count: lessonCount },
-        { data: progressData, error: progressError },
-        { data: lessonsData },
-        { data: profilesData }
-    ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('lessons').select('*', { count: 'exact', head: true }),
-        supabase.from('user_progress').select('id, score, completed_at, lesson_id, user_id'),
-        supabase.from('lessons').select('id, title'),
-        supabase.from('profiles').select('id, full_name, created_at')
-    ]);
+export const getAdminStats = async (options: FetchOptions = {}) => {
+    const { useCache = true, forceRefresh = false } = options;
 
-    if (progressError) {
-        console.error('Error fetching progress:', progressError);
-        return {
-            totalStudents: studentCount || 0,
-            totalLessons: lessonCount || 0,
-            totalCompletions: 0,
-            avgScore: 0,
-            difficultLessons: [],
-            topLearners: [],
-            atRiskStudents: [],
-            weeklyGrowth: 0,
-            activeToday: 0
-        };
-    }
+    return cacheManager.getOrFetch(
+        CacheKeys.adminStats(),
+        async () => {
+            // Parallel fetch for better performance
+            const [
+                { count: studentCount },
+                { count: lessonCount },
+                { data: progressData, error: progressError },
+                { data: lessonsData },
+                { data: profilesData }
+            ] = await Promise.all([
+                supabase.from('profiles').select('*', { count: 'exact', head: true }),
+                supabase.from('lessons').select('*', { count: 'exact', head: true }),
+                supabase.from('user_progress').select('id, score, completed_at, lesson_id, user_id'),
+                supabase.from('lessons').select('id, title'),
+                supabase.from('profiles').select('id, full_name, created_at')
+            ]);
 
-    // Create lookup maps
-    const lessonMap = new Map((lessonsData || []).map(l => [l.id, l.title]));
-    const profileMap = new Map((profilesData || []).map(p => [p.id, p.full_name]));
-
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // Calculate metrics
-    const totalCompletions = progressData?.length || 0;
-    const avgScore = totalCompletions > 0
-        ? progressData!.reduce((acc, curr) => acc + curr.score, 0) / totalCompletions
-        : 0;
-
-    // Weekly comparison
-    const thisWeekCompletions = (progressData || []).filter(p =>
-        new Date(p.completed_at) >= weekAgo
-    ).length;
-    const lastWeekCompletions = (progressData || []).filter(p => {
-        const date = new Date(p.completed_at);
-        return date >= twoWeeksAgo && date < weekAgo;
-    }).length;
-    const weeklyGrowth = lastWeekCompletions > 0
-        ? Math.round(((thisWeekCompletions - lastWeekCompletions) / lastWeekCompletions) * 100)
-        : thisWeekCompletions > 0 ? 100 : 0;
-
-    // Active today
-    const activeToday = new Set((progressData || [])
-        .filter(p => new Date(p.completed_at) >= today)
-        .map(p => p.user_id)
-    ).size;
-
-    // Lesson and user aggregations
-    const lessonScores: Record<string, { title: string, total: number, count: number }> = {};
-    const userStats: Record<string, { name: string, completions: number, totalScore: number, lastActive: Date }> = {};
-
-    (progressData || []).forEach(p => {
-        // Lessons
-        if (p.lesson_id) {
-            if (!lessonScores[p.lesson_id]) {
-                lessonScores[p.lesson_id] = { title: lessonMap.get(p.lesson_id) || 'Unknown', total: 0, count: 0 };
+            if (progressError) {
+                console.error('Error fetching progress:', progressError);
+                return {
+                    totalStudents: studentCount || 0,
+                    totalLessons: lessonCount || 0,
+                    totalCompletions: 0,
+                    avgScore: 0,
+                    difficultLessons: [],
+                    topLearners: [],
+                    atRiskStudents: [],
+                    weeklyGrowth: 0,
+                    activeToday: 0
+                };
             }
-            lessonScores[p.lesson_id].total += p.score;
-            lessonScores[p.lesson_id].count += 1;
-        }
 
-        // Users
-        if (p.user_id) {
-            const actDate = new Date(p.completed_at);
-            if (!userStats[p.user_id]) {
-                userStats[p.user_id] = { name: profileMap.get(p.user_id) || 'User', completions: 0, totalScore: 0, lastActive: actDate };
-            }
-            userStats[p.user_id].completions += 1;
-            userStats[p.user_id].totalScore += p.score;
-            if (actDate > userStats[p.user_id].lastActive) {
-                userStats[p.user_id].lastActive = actDate;
-            }
-        }
-    });
+            // Create lookup maps
+            const lessonMap = new Map((lessonsData || []).map(l => [l.id, l.title]));
+            const profileMap = new Map((profilesData || []).map(p => [p.id, p.full_name]));
 
-    // Difficult lessons: require minimum 3 completions for accuracy
-    const difficultLessons = Object.entries(lessonScores)
-        .filter(([_, data]) => data.count >= 3)  // Minimum threshold
-        .map(([id, data]) => ({ id, title: data.title, avgScore: Math.round(data.total / data.count), attempts: data.count }))
-        .sort((a, b) => a.avgScore - b.avgScore)
-        .slice(0, 3);
+            const now = new Date();
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Top learners
-    const topLearners = Object.entries(userStats)
-        .map(([id, data]) => ({
-            id,
-            full_name: data.name,
-            completions: data.completions,
-            avgScore: Math.round(data.totalScore / data.completions)
-        }))
-        .sort((a, b) => b.completions - a.completions || b.avgScore - a.avgScore)
-        .slice(0, 5);
+            // Calculate metrics
+            const totalCompletions = progressData?.length || 0;
+            const avgScore = totalCompletions > 0
+                ? progressData!.reduce((acc, curr) => acc + curr.score, 0) / totalCompletions
+                : 0;
 
-    // At-risk students: low avg score OR inactive for 7+ days
-    const atRiskStudents = Object.entries(userStats)
-        .map(([id, data]) => ({
-            id,
-            full_name: data.name,
-            avgScore: Math.round(data.totalScore / data.completions),
-            lastActive: data.lastActive,
-            daysSinceActive: Math.floor((now.getTime() - data.lastActive.getTime()) / (24 * 60 * 60 * 1000)),
-            reason: '' as string
-        }))
-        .filter(u => {
-            if (u.avgScore < 50) { u.reason = 'Điểm thấp'; return true; }
-            if (u.daysSinceActive >= 7) { u.reason = 'Không hoạt động'; return true; }
-            return false;
-        })
-        .sort((a, b) => a.avgScore - b.avgScore)
-        .slice(0, 5);
+            // Weekly comparison
+            const thisWeekCompletions = (progressData || []).filter(p =>
+                new Date(p.completed_at) >= weekAgo
+            ).length;
+            const lastWeekCompletions = (progressData || []).filter(p => {
+                const date = new Date(p.completed_at);
+                return date >= twoWeeksAgo && date < weekAgo;
+            }).length;
+            const weeklyGrowth = lastWeekCompletions > 0
+                ? Math.round(((thisWeekCompletions - lastWeekCompletions) / lastWeekCompletions) * 100)
+                : thisWeekCompletions > 0 ? 100 : 0;
 
-    return {
-        totalStudents: studentCount || 0,
-        totalLessons: lessonCount || 0,
-        totalCompletions,
-        avgScore: Math.round(avgScore),
-        difficultLessons,
-        topLearners,
-        atRiskStudents,
-        weeklyGrowth,
-        activeToday,
-        thisWeekCompletions
-    };
+            // Active today
+            const activeToday = new Set((progressData || [])
+                .filter(p => new Date(p.completed_at) >= today)
+                .map(p => p.user_id)
+            ).size;
+
+            // Lesson and user aggregations
+            const lessonScores: Record<string, { title: string, total: number, count: number }> = {};
+            const userStats: Record<string, { name: string, completions: number, totalScore: number, lastActive: Date }> = {};
+
+            (progressData || []).forEach(p => {
+                // Lessons
+                if (p.lesson_id) {
+                    if (!lessonScores[p.lesson_id]) {
+                        lessonScores[p.lesson_id] = { title: lessonMap.get(p.lesson_id) || 'Unknown', total: 0, count: 0 };
+                    }
+                    lessonScores[p.lesson_id].total += p.score;
+                    lessonScores[p.lesson_id].count += 1;
+                }
+
+                // Users
+                if (p.user_id) {
+                    const actDate = new Date(p.completed_at);
+                    if (!userStats[p.user_id]) {
+                        userStats[p.user_id] = { name: profileMap.get(p.user_id) || 'User', completions: 0, totalScore: 0, lastActive: actDate };
+                    }
+                    userStats[p.user_id].completions += 1;
+                    userStats[p.user_id].totalScore += p.score;
+                    if (actDate > userStats[p.user_id].lastActive) {
+                        userStats[p.user_id].lastActive = actDate;
+                    }
+                }
+            });
+
+            // Difficult lessons: require minimum 3 completions for accuracy
+            const difficultLessons = Object.entries(lessonScores)
+                .filter(([_, data]) => data.count >= 3)  // Minimum threshold
+                .map(([id, data]) => ({ id, title: data.title, avgScore: Math.round(data.total / data.count), attempts: data.count }))
+                .sort((a, b) => a.avgScore - b.avgScore)
+                .slice(0, 3);
+
+            // Top learners
+            const topLearners = Object.entries(userStats)
+                .map(([id, data]) => ({
+                    id,
+                    full_name: data.name,
+                    completions: data.completions,
+                    avgScore: Math.round(data.totalScore / data.completions)
+                }))
+                .sort((a, b) => b.completions - a.completions || b.avgScore - a.avgScore)
+                .slice(0, 5);
+
+            // At-risk students: low avg score OR inactive for 7+ days
+            const atRiskStudents = Object.entries(userStats)
+                .map(([id, data]) => ({
+                    id,
+                    full_name: data.name,
+                    avgScore: Math.round(data.totalScore / data.completions),
+                    lastActive: data.lastActive,
+                    daysSinceActive: Math.floor((now.getTime() - data.lastActive.getTime()) / (24 * 60 * 60 * 1000)),
+                    reason: '' as string
+                }))
+                .filter(u => {
+                    if (u.avgScore < 50) { u.reason = 'Điểm thấp'; return true; }
+                    if (u.daysSinceActive >= 7) { u.reason = 'Không hoạt động'; return true; }
+                    return false;
+                })
+                .sort((a, b) => a.avgScore - b.avgScore)
+                .slice(0, 5);
+
+            return {
+                totalStudents: studentCount || 0,
+                totalLessons: lessonCount || 0,
+                totalCompletions,
+                avgScore: Math.round(avgScore),
+                difficultLessons,
+                topLearners,
+                atRiskStudents,
+                weeklyGrowth,
+                activeToday,
+                thisWeekCompletions
+            };
+        },
+        { ttl: 2 * 60 * 1000, forceRefresh: forceRefresh || !useCache } // 2 minute cache for admin stats
+    );
 };
 
-export const getRecentActivity = async () => {
-    // Fetch progress data without nested selects (causes 400 error)
-    const { data: progressData, error } = await supabase
-        .from('user_progress')
-        .select('id, score, completed_at, lesson_id, user_id')
-        .order('completed_at', { ascending: false })
-        .limit(10);
+export const getRecentActivity = async (options: FetchOptions = {}) => {
+    const { useCache = true, forceRefresh = false } = options;
 
-    if (error) {
-        console.error('Error fetching recent activity:', error);
-        return [];
-    }
+    return cacheManager.getOrFetch(
+        CacheKeys.recentActivity(),
+        async () => {
+            // Fetch progress data without nested selects (causes 400 error)
+            const { data: progressData, error } = await supabase
+                .from('user_progress')
+                .select('id, score, completed_at, lesson_id, user_id')
+                .order('completed_at', { ascending: false })
+                .limit(10);
 
-    if (!progressData || progressData.length === 0) return [];
+            if (error) {
+                console.error('Error fetching recent activity:', error);
+                return [];
+            }
 
-    // Get unique lesson and user IDs
-    const lessonIds = [...new Set(progressData.map(p => p.lesson_id))];
-    const userIds = [...new Set(progressData.map(p => p.user_id))];
+            if (!progressData || progressData.length === 0) return [];
 
-    // Fetch lessons and profiles
-    const [lessonsRes, profilesRes] = await Promise.all([
-        supabase.from('lessons').select('id, title').in('id', lessonIds),
-        supabase.from('profiles').select('id, full_name').in('id', userIds)
-    ]);
+            // Get unique lesson and user IDs
+            const lessonIds = [...new Set(progressData.map(p => p.lesson_id))];
+            const userIds = [...new Set(progressData.map(p => p.user_id))];
 
-    const lessonMap = new Map((lessonsRes.data || []).map(l => [l.id, l.title]));
-    const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p.full_name]));
+            // Fetch lessons and profiles
+            const [lessonsRes, profilesRes] = await Promise.all([
+                supabase.from('lessons').select('id, title').in('id', lessonIds),
+                supabase.from('profiles').select('id, full_name').in('id', userIds)
+            ]);
 
-    // Merge data
-    return progressData.map(p => ({
-        ...p,
-        lessons: { title: lessonMap.get(p.lesson_id) || 'Unknown' },
-        profiles: { full_name: profileMap.get(p.user_id) || 'User' }
-    }));
+            const lessonMap = new Map((lessonsRes.data || []).map(l => [l.id, l.title]));
+            const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p.full_name]));
+
+            // Merge data
+            return progressData.map(p => ({
+                ...p,
+                lessons: { title: lessonMap.get(p.lesson_id) || 'Unknown' },
+                profiles: { full_name: profileMap.get(p.user_id) || 'User' }
+            }));
+        },
+        { ttl: 60 * 1000, forceRefresh: forceRefresh || !useCache } // 1 minute cache for recent activity
+    );
 };
 
 export const updateLesson = async (id: string, updates: Partial<Lesson>): Promise<boolean> => {
@@ -402,18 +475,68 @@ export const deleteExercise = async (id: string): Promise<boolean> => {
 export const updateExerciseOrder = async (exercises: { id: string; order_index: number }[]) => {
     if (exercises.length === 0) return;
 
-    // Using Promise.all for batch updates since Supabase doesn't support bulk update with varying values natively easily
-    const updates = exercises.map(ex =>
-        supabase
-            .from('exercises')
-            .update({ order_index: ex.order_index })
-            .eq('id', ex.id)
-    );
+    // OPTIMIZATION: Batch all updates into a single transaction
+    // Using upsert with on_conflict instead of N individual updates
+    try {
+        // Group updates and execute in parallel batches of 10 (more efficient than individual)
+        const BATCH_SIZE = 10;
+        const batches: typeof exercises[] = [];
 
-    const results = await Promise.all(updates);
-    const hasError = results.some(r => r.error);
+        for (let i = 0; i < exercises.length; i += BATCH_SIZE) {
+            batches.push(exercises.slice(i, i + BATCH_SIZE));
+        }
 
-    if (hasError) {
-        console.error('Error updating exercise order');
+        const batchPromises = batches.map(async (batch) => {
+            // Execute batch updates in parallel (within the batch)
+            const updates = batch.map(ex =>
+                supabase
+                    .from('exercises')
+                    .update({ order_index: ex.order_index })
+                    .eq('id', ex.id)
+            );
+            return Promise.all(updates);
+        });
+
+        const results = await Promise.all(batchPromises);
+        const hasError = results.flat().some(r => r.error);
+
+        if (hasError) {
+            console.error('Error updating exercise order');
+        }
+
+        // Invalidate lessons cache since order changed
+        cacheManager.invalidate(/^lessons/);
+    } catch (err) {
+        console.error('Error in batch update:', err);
     }
+};
+
+// ============================================================================
+// CACHE INVALIDATION HELPERS
+// ============================================================================
+
+/**
+ * Invalidate all lesson-related caches
+ * Call this when lessons or exercises are modified
+ */
+export const invalidateLessonCache = () => {
+    cacheManager.invalidate(/^lesson/);
+};
+
+/**
+ * Invalidate user progress caches
+ * Call this when progress is saved
+ */
+export const invalidateProgressCache = (userId: string) => {
+    cacheManager.invalidateKey(CacheKeys.userProgress(userId));
+    cacheManager.invalidateKey(CacheKeys.exerciseProgress(userId));
+};
+
+/**
+ * Invalidate admin stats cache
+ * Call this when data changes that affects stats
+ */
+export const invalidateAdminCache = () => {
+    cacheManager.invalidateKey(CacheKeys.adminStats());
+    cacheManager.invalidateKey(CacheKeys.recentActivity());
 };

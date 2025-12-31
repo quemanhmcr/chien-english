@@ -90,15 +90,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Throttle mechanism to prevent excessive API calls
+  const lastFetchTimeRef = React.useRef<Record<string, number>>({});
+  const FETCH_THROTTLE_MS = 5000; // 5 seconds minimum between fetches for same tab
+
   useEffect(() => {
+    const now = Date.now();
+    const lastFetch = lastFetchTimeRef.current[activeTab] || 0;
+
+    // Skip if we fetched this tab within throttle window
+    if (now - lastFetch < FETCH_THROTTLE_MS) {
+      return;
+    }
+
     fetchData();
   }, [activeTab]);
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
+    const now = Date.now();
+    const lastFetch = lastFetchTimeRef.current[activeTab] || 0;
+
+    // Double-check throttle (for manual refresh calls)
+    if (!forceRefresh && now - lastFetch < FETCH_THROTTLE_MS) {
+      return;
+    }
+
+    lastFetchTimeRef.current[activeTab] = now;
     setIsFetchingData(true);
+
     try {
       if (activeTab === 'students') {
-        const data = await getAllProfiles();
+        const data = await getAllProfiles({ useCache: true });
         setStudents(data);
       } else if (activeTab === 'overview') {
         const [statsData, activityData] = await Promise.all([
@@ -893,7 +915,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <p className="text-slate-500 text-sm">Theo dõi tiến độ học viên và hiệu quả giảng dạy</p>
               </div>
               <button
-                onClick={fetchData}
+                onClick={() => fetchData(true)}
                 disabled={isFetchingData}
                 className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-xl transition-all text-sm"
               >
