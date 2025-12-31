@@ -448,9 +448,9 @@ export const updateExercise = async (id: string, updates: Partial<Exercise>): Pr
         updatePayload.hint = updates.hint?.trim() || null;
     }
 
-    if (updates.difficulty !== undefined) {
+    if (updates.difficulty !== undefined && updates.difficulty !== null) {
         if (!['Easy', 'Medium', 'Hard'].includes(updates.difficulty)) {
-            console.error('Invalid difficulty value');
+            console.error('Invalid difficulty value:', updates.difficulty);
             return false;
         }
         updatePayload.difficulty = updates.difficulty;
