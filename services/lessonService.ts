@@ -8,7 +8,8 @@ export const getLessons = async (): Promise<Lesson[]> => {
       *,
       exercises (*)
     `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) // Order lessons by newest
+        .order('order_index', { ascending: true, foreignTable: 'exercises' }); // Order exercises by index
 
     if (lessonsError) {
         console.error('Error fetching lessons:', lessonsError);
@@ -26,6 +27,7 @@ export const getLessonById = async (id: string): Promise<Lesson | null> => {
       exercises (*)
     `)
         .eq('id', id)
+        .order('order_index', { ascending: true, foreignTable: 'exercises' })
         .single();
 
     if (error) {
@@ -372,4 +374,35 @@ export const insertExercise = async (
         return null;
     }
     return data as Exercise;
+};
+export const deleteExercise = async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error deleting exercise:', error);
+        return false;
+    }
+    return true;
+};
+
+export const updateExerciseOrder = async (exercises: { id: string; order_index: number }[]) => {
+    if (exercises.length === 0) return;
+
+    // Using Promise.all for batch updates since Supabase doesn't support bulk update with varying values natively easily
+    const updates = exercises.map(ex =>
+        supabase
+            .from('exercises')
+            .update({ order_index: ex.order_index })
+            .eq('id', ex.id)
+    );
+
+    const results = await Promise.all(updates);
+    const hasError = results.some(r => r.error);
+
+    if (hasError) {
+        console.error('Error updating exercise order');
+    }
 };

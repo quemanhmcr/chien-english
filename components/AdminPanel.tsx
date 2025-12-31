@@ -22,7 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Lesson, Exercise, UserProfile, AdminStats } from '../types';
 import { getAllProfiles, updateProfile, signOut, getUserDetailedProgress } from '../services/authService';
-import { getAdminStats, getRecentActivity, updateLesson, updateExercise, insertExercise } from '../services/lessonService';
+import { getAdminStats, getRecentActivity, updateLesson, updateExercise, insertExercise, deleteExercise, updateExerciseOrder } from '../services/lessonService';
 import { LessonWizard } from './LessonWizard';
 import { SortableExerciseItem } from './SortableExerciseItem';
 import { InsertionZone } from './InsertionZone';
@@ -148,6 +148,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (oldIndex !== -1 && newIndex !== -1) {
       const newExercises = arrayMove(currentLesson.exercises, oldIndex, newIndex);
       onUpdateLesson({ ...currentLesson, exercises: newExercises });
+
+      // Persist new order
+      const orderUpdates = newExercises.map((ex, index) => ({
+        id: ex.id,
+        order_index: index
+      }));
+      updateExerciseOrder(orderUpdates).catch(err => console.error('Failed to update order:', err));
     }
   }, [viewingLessonId, lessons, onUpdateLesson]);
 
@@ -260,15 +267,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleDeleteExercise = (exerciseId: string) => {
+  const handleDeleteExercise = async (exerciseId: string) => {
     if (!viewingLessonId) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) return;
+
     const currentLesson = lessons.find(l => l.id === viewingLessonId);
     if (!currentLesson) return;
+
+    // Optimistically update UI
     const updatedLesson = {
       ...currentLesson,
       exercises: currentLesson.exercises.filter(ex => ex.id !== exerciseId)
     };
     onUpdateLesson(updatedLesson);
+
+    try {
+      const success = await deleteExercise(exerciseId);
+      if (!success) {
+        throw new Error('Failed to delete');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Không thể xóa câu hỏi. Vui lòng tải lại trang.');
+      // Revert if needed, but for now simple alert is safer than complex revert logic
+    }
   };
 
   const handleSignOut = async () => {
