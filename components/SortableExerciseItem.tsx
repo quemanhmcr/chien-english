@@ -57,8 +57,8 @@ export const SortableExerciseItem: React.FC<SortableExerciseItemProps> = ({
             ref={setNodeRef}
             style={style}
             className={`drag-item group flex items-center gap-4 p-5 rounded-2xl border transition-all duration-200 ${isDragging
-                    ? 'is-dragging bg-white border-indigo-500 shadow-xl'
-                    : 'bg-[var(--md-sys-color-surface-container-lowest)] border-slate-200/60 hover:border-indigo-400 hover:bg-white'
+                ? 'is-dragging bg-white border-indigo-500 shadow-xl'
+                : 'bg-[var(--md-sys-color-surface-container-lowest)] border-slate-200/60 hover:border-indigo-400 hover:bg-white'
                 }`}
         >
             {/* Drag Handle */}
@@ -73,8 +73,8 @@ export const SortableExerciseItem: React.FC<SortableExerciseItemProps> = ({
 
             {/* Index Number */}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all duration-300 ${isDragging
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-600 group-hover:text-white'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-600 group-hover:text-white'
                 }`}>
                 {index + 1}
             </div>
@@ -102,14 +102,14 @@ export const SortableExerciseItem: React.FC<SortableExerciseItemProps> = ({
                 )}
                 <div className="flex items-center gap-3 mt-1.5">
                     <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${exercise.type === 'translation' ? 'bg-blue-50 border-blue-100 text-blue-600' :
-                            exercise.type === 'roleplay' ? 'bg-purple-50 border-purple-100 text-purple-600' :
-                                'bg-amber-50 border-amber-100 text-amber-600'
+                        exercise.type === 'roleplay' ? 'bg-purple-50 border-purple-100 text-purple-600' :
+                            'bg-amber-50 border-amber-100 text-amber-600'
                         }`}>
                         {exercise.type}
                     </span>
                     <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${exercise.difficulty === 'Easy' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                            exercise.difficulty === 'Medium' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                                'bg-rose-50 border-rose-100 text-rose-600'
+                        exercise.difficulty === 'Medium' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                            'bg-rose-50 border-rose-100 text-rose-600'
                         }`}>
                         {exercise.difficulty}
                     </span>
@@ -123,16 +123,25 @@ export const SortableExerciseItem: React.FC<SortableExerciseItemProps> = ({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all pointer-events-auto z-10">
                 <button
-                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log('[DEBUG] Edit button clicked for exercise:', exercise.id);
+                        onEdit();
+                    }}
                     className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                     title="Chỉnh sửa chi tiết"
                 >
                     <Edit3 className="w-4 h-4" />
                 </button>
                 <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onDelete();
+                    }}
                     className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                     title="Xóa câu hỏi"
                 >

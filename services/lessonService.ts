@@ -426,19 +426,62 @@ export const updateLesson = async (id: string, updates: Partial<Lesson>): Promis
 };
 
 export const updateExercise = async (id: string, updates: Partial<Exercise>): Promise<boolean> => {
+    // Input validation
+    if (!id || typeof id !== 'string') {
+        console.error('Invalid exercise ID');
+        return false;
+    }
+
+    // Build update payload with only defined values (avoid overwriting with undefined)
+    const updatePayload: Record<string, any> = {};
+
+    if (updates.vietnamese !== undefined) {
+        const trimmed = updates.vietnamese.trim();
+        if (!trimmed) {
+            console.error('Vietnamese content cannot be empty');
+            return false;
+        }
+        updatePayload.vietnamese = trimmed;
+    }
+
+    if (updates.hint !== undefined) {
+        updatePayload.hint = updates.hint?.trim() || null;
+    }
+
+    if (updates.difficulty !== undefined) {
+        if (!['Easy', 'Medium', 'Hard'].includes(updates.difficulty)) {
+            console.error('Invalid difficulty value');
+            return false;
+        }
+        updatePayload.difficulty = updates.difficulty;
+    }
+
+    if (updates.type !== undefined) {
+        if (!['translation', 'roleplay', 'detective'].includes(updates.type)) {
+            console.error('Invalid exercise type');
+            return false;
+        }
+        updatePayload.type = updates.type;
+    }
+
+    // Nothing to update
+    if (Object.keys(updatePayload).length === 0) {
+        return true;
+    }
+
     const { error } = await supabase
         .from('exercises')
-        .update({
-            vietnamese: updates.vietnamese,
-            hint: updates.hint,
-            difficulty: updates.difficulty
-        })
+        .update(updatePayload)
         .eq('id', id);
 
     if (error) {
         console.error('Error updating exercise:', error);
         return false;
     }
+
+    // Invalidate lesson cache to ensure fresh data on next fetch
+    invalidateLessonCache();
+
     return true;
 };
 

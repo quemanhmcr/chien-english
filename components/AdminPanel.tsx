@@ -26,6 +26,7 @@ import { getAdminStats, getRecentActivity, updateLesson, updateExercise, insertE
 import { LessonWizard } from './LessonWizard';
 import { SortableExerciseItem } from './SortableExerciseItem';
 import { InsertionZone } from './InsertionZone';
+import { useToast } from './Toast';
 
 interface AdminPanelProps {
   lessons: Lesson[];
@@ -89,6 +90,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Toast notifications
+  const { showToast } = useToast();
 
   // Throttle mechanism to prevent excessive API calls
   const lastFetchTimeRef = React.useRef<Record<string, number>>({});
@@ -193,23 +197,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     const trimmed = inlineEditValue.trim();
     if (!trimmed) {
+      showToast('Nội dung không được để trống', 'error');
       setInlineEditId(null);
       return;
     }
     try {
-      await updateExercise(inlineEditId, { vietnamese: trimmed });
-      const currentLesson = lessons.find(l => l.id === viewingLessonId);
-      if (currentLesson) {
-        const updatedExercises = currentLesson.exercises.map(ex =>
-          ex.id === inlineEditId ? { ...ex, vietnamese: trimmed } : ex
-        );
-        onUpdateLesson({ ...currentLesson, exercises: updatedExercises });
+      const success = await updateExercise(inlineEditId, { vietnamese: trimmed });
+      if (success) {
+        const currentLesson = lessons.find(l => l.id === viewingLessonId);
+        if (currentLesson) {
+          const updatedExercises = currentLesson.exercises.map(ex =>
+            ex.id === inlineEditId ? { ...ex, vietnamese: trimmed } : ex
+          );
+          onUpdateLesson({ ...currentLesson, exercises: updatedExercises });
+        }
+        showToast('Đã lưu thay đổi', 'success', 2000);
+      } else {
+        showToast('Không thể lưu thay đổi', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Có lỗi xảy ra khi lưu', 'error');
     }
     setInlineEditId(null);
-  }, [inlineEditId, inlineEditValue, viewingLessonId, lessons, onUpdateLesson]);
+  }, [inlineEditId, inlineEditValue, viewingLessonId, lessons, onUpdateLesson, showToast]);
 
   // Insert Exercise at Index
   const handleInsertExerciseAt = useCallback((index: number) => {
@@ -337,15 +348,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleUpdateExerciseContent = async (exerciseId: string, updates: Partial<Exercise>) => {
+    // Input validation
+    if (updates.vietnamese !== undefined && !updates.vietnamese.trim()) {
+      alert('Nội dung câu hỏi không được để trống.');
+      return;
+    }
+
+    // Store previous state for rollback
+    const targetLesson = viewingLessonId
+      ? lessons.find(l => l.id === viewingLessonId)
+      : lessons.find(l => l.exercises.some(ex => ex.id === exerciseId));
+    const previousExercise = targetLesson?.exercises.find(ex => ex.id === exerciseId);
+
     setIsUpdating(true);
     try {
       const success = await updateExercise(exerciseId, updates);
       if (success) {
-        // Find the lesson containing this exercise (could be current or any lesson)
-        const targetLesson = viewingLessonId
-          ? lessons.find(l => l.id === viewingLessonId)
-          : lessons.find(l => l.exercises.some(ex => ex.id === exerciseId));
-
         if (targetLesson) {
           const updatedExercises = targetLesson.exercises.map(ex =>
             ex.id === exerciseId ? { ...ex, ...updates } : ex
@@ -359,6 +377,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err) {
       console.error(err);
       alert('Có lỗi xảy ra khi cập nhật.');
+      // Rollback UI state on failure
+      if (previousExercise && targetLesson) {
+        const revertedExercises = targetLesson.exercises.map(ex =>
+          ex.id === exerciseId ? previousExercise : ex
+        );
+        onUpdateLesson({ ...targetLesson, exercises: revertedExercises });
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -835,6 +860,81 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div >
           </div >
         </div >
+
+        {/* Exercise Edit Modal - Inside viewingLessonId block */}
+        {editingExercise && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-2xl font-black text-slate-900">Refine Question</h3>
+                <button onClick={() => setEditingExercise(null)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
+                  <Plus className="w-6 h-6 rotate-45" />
+                </button>
+              </div>
+              <div className="p-10 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vietnamese Phrase</label>
+                  <input
+                    type="text"
+                    value={editingExercise.vietnamese}
+                    onChange={(e) => setEditingExercise({ ...editingExercise, vietnamese: e.target.value })}
+                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Exercise Type</label>
+                    <select
+                      className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none bg-white cursor-pointer font-bold shadow-sm"
+                      value={editingExercise.type || 'translation'}
+                      onChange={(e) => setEditingExercise({ ...editingExercise, type: e.target.value as any })}
+                    >
+                      <option value="translation">📝 Translation</option>
+                      <option value="roleplay">💬 Role-play</option>
+                      <option value="detective">🔍 Detective</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Difficulty</label>
+                    <select
+                      className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none bg-white cursor-pointer font-bold shadow-sm"
+                      value={editingExercise.difficulty || 'Medium'}
+                      onChange={(e) => setEditingExercise({ ...editingExercise, difficulty: e.target.value as any })}
+                    >
+                      <option value="Easy">🟢 Easy</option>
+                      <option value="Medium">🟡 Medium</option>
+                      <option value="Hard">🔴 Hard</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Learning Hint <span className="font-normal opacity-60">(optional)</span></label>
+                  <input
+                    type="text"
+                    placeholder="VD: Chú ý thì của động từ..."
+                    value={editingExercise.hint || ''}
+                    onChange={(e) => setEditingExercise({ ...editingExercise, hint: e.target.value })}
+                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button
+                    disabled={isUpdating}
+                    onClick={() => handleUpdateExerciseContent(editingExercise.id, {
+                      vietnamese: editingExercise.vietnamese,
+                      hint: editingExercise.hint,
+                      type: editingExercise.type,
+                      difficulty: editingExercise.difficulty
+                    })}
+                    className="flex-1 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
+                  >
+                    {isUpdating ? 'Saving...' : 'Apply Fixes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div >
     );
   }
@@ -1330,67 +1430,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="flex-1 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
                 >
                   {isUpdating ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Exercise Edit Modal */}
-      {editingExercise && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <h3 className="text-2xl font-black text-slate-900">Refine Question</h3>
-              <button onClick={() => setEditingExercise(null)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
-                <Plus className="w-6 h-6 rotate-45" />
-              </button>
-            </div>
-            <div className="p-10 space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vietnamese Phrase</label>
-                <input
-                  type="text"
-                  value={editingExercise.vietnamese}
-                  onChange={(e) => setEditingExercise({ ...editingExercise, vietnamese: e.target.value })}
-                  className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Exercise Type</label>
-                  <select
-                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none bg-white cursor-pointer font-bold shadow-sm"
-                    value={editingExercise.type}
-                    onChange={(e) => setEditingExercise({ ...editingExercise, type: e.target.value as any })}
-                  >
-                    <option value="translation">Translation</option>
-                    <option value="roleplay">Role-play</option>
-                    <option value="detective">Detective</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Learning Hint</label>
-                  <input
-                    type="text"
-                    value={editingExercise.hint || ''}
-                    onChange={(e) => setEditingExercise({ ...editingExercise, hint: e.target.value })}
-                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-4 pt-4">
-                <button
-                  disabled={isUpdating}
-                  onClick={() => handleUpdateExerciseContent(editingExercise.id, {
-                    vietnamese: editingExercise.vietnamese,
-                    hint: editingExercise.hint,
-                    type: editingExercise.type
-                  })}
-                  className="flex-1 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
-                >
-                  {isUpdating ? 'Saving...' : 'Apply Fixes'}
                 </button>
               </div>
             </div>
