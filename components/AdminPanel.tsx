@@ -35,6 +35,7 @@ interface AdminPanelProps {
   onUpdateLesson: (lesson: Lesson) => void;
   onDeleteLesson: (id: string) => void;
   onBack: () => void;
+  onRefreshData?: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -43,7 +44,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onAddLesson,
   onUpdateLesson,
   onDeleteLesson,
-  onBack
+  onBack,
+  onRefreshData
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'lessons' | 'students'>('overview');
   const [students, setStudents] = useState<UserProfile[]>([]);
@@ -124,15 +126,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     try {
       if (activeTab === 'students') {
-        const data = await getAllProfiles({ useCache: true });
+        const data = await getAllProfiles({ useCache: !forceRefresh, forceRefresh });
         setStudents(data);
       } else if (activeTab === 'overview') {
         const [statsData, activityData] = await Promise.all([
-          getAdminStats(),
-          getRecentActivity()
+          getAdminStats({ useCache: !forceRefresh, forceRefresh }),
+          getRecentActivity({ useCache: !forceRefresh, forceRefresh })
         ]);
         setStats(statsData);
         setRecentActivity(activityData);
+      } else if (activeTab === 'lessons' && onRefreshData) {
+        onRefreshData();
       }
     } catch (e) {
       console.error(e);
@@ -1244,7 +1248,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   <Sparkles className="w-4 h-4" /> AI Architect
                 </button>
-
+                <button
+                  onClick={() => fetchData(true)}
+                  disabled={isFetchingData}
+                  className="flex items-center gap-2 px-8 py-5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-800 font-black rounded-3xl transition-all text-xs uppercase tracking-widest active:scale-95"
+                >
+                  {isFetchingData ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  ) : (
+                    <Activity className="w-4 h-4 text-indigo-600" />
+                  )}
+                  Làm mới
+                </button>
               </div>
             </header>
 
@@ -1322,11 +1337,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="w-full bg-white border border-slate-200 py-5 pl-16 pr-6 rounded-3xl font-black text-sm outline-none focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all shadow-sm"
                 />
               </div>
+              <button
+                onClick={() => fetchData(true)}
+                disabled={isFetchingData}
+                className="flex items-center gap-2 px-8 py-5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-800 font-black rounded-3xl transition-all text-xs uppercase tracking-widest active:scale-95"
+              >
+                {isFetchingData ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                ) : (
+                  <Activity className="w-4 h-4 text-indigo-600" />
+                )}
+                Làm mới
+              </button>
             </header>
 
             <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-xl shadow-slate-200/30 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
                       <th className="px-10 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Học viên & Ngày tham gia</th>

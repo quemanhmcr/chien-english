@@ -127,7 +127,7 @@ export const deleteLesson = async (id: string): Promise<boolean> => {
 
 export const saveProgress = async (userId: string, lessonId: string, score: number) => {
     if (import.meta.env.DEV) {
-        console.log('[DB] saveProgress called:', { userId, lessonId, score });
+        if (import.meta.env.DEV) console.log('[DB] saveProgress called:', { userId, lessonId, score });
     }
 
     const { data, error } = await supabase
@@ -141,7 +141,7 @@ export const saveProgress = async (userId: string, lessonId: string, score: numb
     }
 
     if (import.meta.env.DEV) {
-        console.log('[DB] Progress saved successfully:', data);
+        if (import.meta.env.DEV) console.log('[DB] Progress saved successfully:', data);
     }
 
     // Bonus XP for completing a lesson

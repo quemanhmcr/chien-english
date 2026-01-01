@@ -128,7 +128,7 @@ export const SortableExerciseItem: React.FC<SortableExerciseItemProps> = ({
                     onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        console.log('[DEBUG] Edit button clicked for exercise:', exercise.id);
+                        if (import.meta.env.DEV) console.log('[DEBUG] Edit button clicked for exercise:', exercise.id);
                         onEdit();
                     }}
                     className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"

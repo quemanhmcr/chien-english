@@ -63,17 +63,17 @@ const App: React.FC = () => {
     const userId = session?.user?.id;
 
     if (userId) {
-      console.log('App: Session detected for user:', userId);
+      if (import.meta.env.DEV) console.log('App: Session detected for user:', userId);
       fetchProfileData(userId, session?.user?.user_metadata);
       fetchData(userId);
     } else if (!isLoading) {
-      console.log('App: No session, fetching guest data');
+      if (import.meta.env.DEV) console.log('App: No session, fetching guest data');
       fetchData();
     }
   }, [session?.user?.id]);
 
   useEffect(() => {
-    console.log('App: Mounting and setting up auth listener...');
+    if (import.meta.env.DEV) console.log('App: Mounting and setting up auth listener...');
 
     // Clear auth error fragments from URL to prevent loops
     const hash = window.location.hash;
@@ -88,7 +88,7 @@ const App: React.FC = () => {
     // Initial session check & Listener
     // Note: onAuthStateChange triggers INITIAL_SESSION or SIGNED_IN immediately on subscribe
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      console.log(`App: Auth State Change [${event}]:`, currentSession ? 'Session Active' : 'Session Null');
+      if (import.meta.env.DEV) console.log(`App: Auth State Change [${event}]:`, currentSession ? 'Session Active' : 'Session Null');
 
       setSession(currentSession);
       setIsLoading(false);
@@ -100,7 +100,7 @@ const App: React.FC = () => {
     });
 
     return () => {
-      console.log('App: Unmounting component');
+      if (import.meta.env.DEV) console.log('App: Unmounting component');
       subscription.unsubscribe();
     };
   }, []);
@@ -189,6 +189,10 @@ const App: React.FC = () => {
             onUpdateLesson={handleUpdateLesson}
             onDeleteLesson={handleDeleteLesson}
             onBack={() => setView('learner')}
+            onRefreshData={() => {
+              const uid = session?.user?.id;
+              fetchData(uid);
+            }}
           />
         )}
       </Suspense>

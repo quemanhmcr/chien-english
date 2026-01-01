@@ -460,7 +460,13 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   <Book className="w-8 h-8 text-slate-300" />
                 </div>
                 <h4 className="text-xl font-black text-slate-800 mb-2">Không tìm thấy bài học nào</h4>
-                <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc độ khó để tìm thấy nhiều nội dung hơn.</p>
+                <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium mb-6">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc độ khó để tìm thấy nhiều nội dung hơn.</p>
+                <button
+                  onClick={() => { setSearchTerm(''); setLevelFilter('All'); onRefreshData(); }}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Làm mới danh sách
+                </button>
               </div>
             ) : (
               filteredLessons.map((lesson) => {
