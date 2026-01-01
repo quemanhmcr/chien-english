@@ -6,6 +6,7 @@ import {
 import { Lesson, Exercise } from '../types';
 import { generateLessonContent } from '../services/mimoService';
 import { LESSON_GENERATION_PROMPT } from '../services/prompts';
+import { useToast } from './Toast';
 
 interface LessonWizardProps {
     isOpen: boolean;
@@ -51,6 +52,8 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [animatingStep, setAnimatingStep] = useState<'enter' | 'exit' | null>('enter');
+
+    const { showToast } = useToast();
 
     // Reset on close
     useEffect(() => {
@@ -116,10 +119,11 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                 exercises: generatedContent.exercises
             };
             await onAddLesson(newLesson as any);
+            showToast('Đã tạo bài học thành công!', 'success');
             onClose();
         } catch (err) {
             console.error(err);
-            alert('Có lỗi khi tạo bài học. Vui lòng thử lại.');
+            showToast('Không thể tạo bài học. Vui lòng thử lại.', 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -133,6 +137,7 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
             if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                 await navigator.clipboard.writeText(fullPrompt);
                 setIsCopied(true);
+                showToast('Đã copy prompt!', 'success', 2000);
                 setTimeout(() => setIsCopied(false), 2000);
                 return;
             }
@@ -140,13 +145,11 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
             // Fallback for older browsers or non-secure contexts
             const textArea = document.createElement("textarea");
             textArea.value = fullPrompt;
-            // Prevent scrolling to bottom on iOS
             textArea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
 
-            // Check if execCommand actually succeeded
             const successful = document.execCommand('copy');
             textArea.remove();
 
@@ -155,17 +158,16 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
             }
 
             setIsCopied(true);
+            showToast('Đã copy prompt!', 'success', 2000);
             setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
             console.error('Copy failed:', err);
+            showToast('Không thể copy. Vui lòng copy thủ công.', 'warning');
             // Show the prompt in a way user can manually copy
-            const manualCopy = window.confirm('Không thể tự động copy. Bấm OK để xem prompt và copy thủ công.');
-            if (manualCopy) {
-                const popup = window.open('', '_blank', 'width=800,height=600');
-                if (popup) {
-                    popup.document.write(`<html><head><title>Copy Prompt</title></head><body><pre style="white-space:pre-wrap;word-wrap:break-word;font-family:monospace;padding:20px;">${fullPrompt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`);
-                    popup.document.close();
-                }
+            const popup = window.open('', '_blank', 'width=800,height=600');
+            if (popup) {
+                popup.document.write(`<html><head><title>Copy Prompt</title></head><body><pre style="white-space:pre-wrap;word-wrap:break-word;font-family:monospace;padding:20px;">${fullPrompt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`);
+                popup.document.close();
             }
         }
     };
@@ -187,28 +189,35 @@ export const LessonWizard: React.FC<LessonWizardProps> = ({
                 throw new Error('Một số câu hỏi thiếu trường "vietnamese".');
             }
             await onAddLesson(parsed as any);
+            showToast('Import bài học thành công!', 'success');
             onClose();
         } catch (err: any) {
-            alert(`Lỗi: ${err.message || 'JSON không đúng định dạng.'}`);
+            showToast(`Lỗi: ${err.message || 'JSON không đúng định dạng.'}`, 'error');
         }
     };
 
     const handleManualSubmit = async () => {
         if (!state.manualTitle.trim()) return;
-        const newLesson = {
-            title: state.manualTitle,
-            description: state.manualDescription,
-            level: state.manualLevel,
-            exercises: state.manualExercises.filter(e => e.vietnamese).map((e, i) => ({
-                id: crypto.randomUUID ? crypto.randomUUID() : `ex-${Date.now()}-${i}`,
-                type: e.type || 'translation',
-                vietnamese: e.vietnamese!,
-                difficulty: e.difficulty || 'Medium',
-                hint: e.hint
-            }))
-        };
-        await onAddLesson(newLesson as any);
-        onClose();
+        try {
+            const newLesson = {
+                title: state.manualTitle,
+                description: state.manualDescription,
+                level: state.manualLevel,
+                exercises: state.manualExercises.filter(e => e.vietnamese).map((e, i) => ({
+                    id: crypto.randomUUID ? crypto.randomUUID() : `ex-${Date.now()}-${i}`,
+                    type: e.type || 'translation',
+                    vietnamese: e.vietnamese!,
+                    difficulty: e.difficulty || 'Medium',
+                    hint: e.hint
+                }))
+            };
+            await onAddLesson(newLesson as any);
+            showToast('Đã tạo bài học thủ công thành công!', 'success');
+            onClose();
+        } catch (err) {
+            console.error(err);
+            showToast('Không thể tạo bài học. Vui lòng thử lại.', 'error');
+        }
     };
 
     const addManualExercise = () => {

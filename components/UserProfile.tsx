@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { UserProfile as UserProfileType } from '../types';
 import { updateProfile } from '../services/authService';
-import { User, Camera, Save, Loader2, X, Check } from 'lucide-react';
+import { useToast } from './Toast';
+import { User, Camera, Save, Loader2, X } from 'lucide-react';
 
 interface UserProfileProps {
     profile: UserProfileType;
@@ -12,20 +13,20 @@ interface UserProfileProps {
 export const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate, onClose }) => {
     const [fullName, setFullName] = useState(profile.full_name);
     const [isUpdating, setIsUpdating] = useState(false);
-    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const { showToast } = useToast();
 
     const handleSave = async () => {
         if (!fullName.trim() || fullName === profile.full_name) return;
 
         setIsUpdating(true);
-        setMessage(null);
         try {
             await updateProfile(profile.id, { full_name: fullName });
             const updatedProfile = { ...profile, full_name: fullName };
             onUpdate(updatedProfile);
-            setMessage({ text: 'Cập nhật thông tin thành công!', type: 'success' });
+            showToast('Cập nhật thông tin thành công!', 'success');
+            onClose(); // Close modal on success
         } catch (err) {
-            setMessage({ text: 'Lỗi khi cập nhật thông tin.', type: 'error' });
+            showToast('Lỗi khi cập nhật thông tin.', 'error');
         } finally {
             setIsUpdating(false);
         }
@@ -84,14 +85,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate, onC
                             </div>
                         </div>
                     </div>
-
-                    {message && (
-                        <div className={`p-4 rounded-xl flex items-center gap-3 text-sm animate-slide-up ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
-                            }`}>
-                            {message.type === 'success' ? <Check size={18} /> : <X size={18} />}
-                            {message.text}
-                        </div>
-                    )}
 
                     <button
                         onClick={handleSave}

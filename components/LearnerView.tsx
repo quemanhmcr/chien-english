@@ -10,6 +10,7 @@ import { evaluateExercise } from '../services/mimoService';
 import { ProgressBar } from './ProgressBar';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackSkeleton } from './FeedbackSkeleton';
+import { useToast } from './Toast';
 import { signOut } from '../services/authService';
 import { saveProgress, saveExerciseProgress } from '../services/lessonService';
 
@@ -31,6 +32,7 @@ interface LearnerViewProps {
 export const LearnerView: React.FC<LearnerViewProps> = ({
   lessons, onOpenAdmin, userProfile, onOpenProfile, userProgress, exerciseProgress, onRefreshData
 }) => {
+  const { showToast } = useToast();
   // Navigation State
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -237,15 +239,16 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
           exerciseCount: selectedLesson.exercises.length
         });
 
-        // Fire and forget - don't block UI
         Promise.all([
           feedback ? saveExerciseProgress(userProfile.id, exerciseToSave!.id, scoreToSave) : Promise.resolve(),
           saveProgress(userProfile.id, selectedLesson.id, finalScore)
         ]).then(() => {
           devLog('[SAVE] Success! Refreshing data...');
+          showToast('Chúc mừng! Bạn đã hoàn thành bài học! 🎉', 'success');
           onRefreshData();
         }).catch(e => {
           console.error('[SAVE] Failed to save progress:', e);
+          showToast('Không thể lưu tiến độ. Vui lòng kiểm tra kết nối.', 'error');
         });
       }
     } else {
@@ -255,10 +258,12 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
       setFeedback(null);
       setAppState(AppState.IDLE);
 
-      // Background save for exercise progress - don't wait
       if (userProfile && exerciseToSave && feedback) {
         saveExerciseProgress(userProfile.id, exerciseToSave.id, scoreToSave)
-          .catch(e => console.error('Failed to save step progress:', e));
+          .catch(e => {
+            console.error('Failed to save step progress:', e);
+            showToast('Không thể lưu tiến độ bài tập.', 'warning');
+          });
       }
     }
   };
@@ -270,9 +275,8 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
   };
 
   const handleSignOut = async () => {
-    if (confirm('Bạn có muốn đăng xuất không?')) {
-      await signOut();
-    }
+    await signOut();
+    showToast('Đã đăng xuất thành công', 'info', 2000);
   };
 
   // --- RENDER: LESSON MENU ---

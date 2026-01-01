@@ -150,13 +150,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleToggleRole = async (student: UserProfile) => {
     const newRole = student.role === 'admin' ? 'student' : 'admin';
-    if (confirm(`Bạn có chắc chắn muốn chuyển vai trò của ${student.full_name} thành ${newRole}?`)) {
-      try {
-        await updateProfile(student.id, { role: newRole });
-        setStudents(prev => prev.map(s => s.id === student.id ? { ...s, role: newRole } : s));
-      } catch (err) {
-        alert('Không thể cập nhật vai trò.');
-      }
+    try {
+      await updateProfile(student.id, { role: newRole });
+      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, role: newRole } : s));
+      showToast(`Đã cập nhật vai trò thành ${newRole}`, 'success');
+    } catch (err) {
+      showToast('Không thể cập nhật vai trò.', 'error');
     }
   };
 
@@ -180,9 +179,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         id: ex.id,
         order_index: index
       }));
-      updateExerciseOrder(orderUpdates).catch(err => console.error('Failed to update order:', err));
+      updateExerciseOrder(orderUpdates)
+        .then(() => showToast('Đã sắp xếp lại thứ tự', 'success', 2000))
+        .catch(err => {
+          console.error('Failed to update order:', err);
+          showToast('Không thể lưu thứ tự mới', 'error');
+        });
     }
-  }, [viewingLessonId, lessons, onUpdateLesson]);
+  }, [viewingLessonId, lessons, onUpdateLesson, showToast]);
 
   // Inline Editing Handlers
   const startInlineEdit = useCallback((exercise: Exercise) => {
@@ -246,7 +250,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       });
 
       if (!savedExercise) {
-        alert('Không thể lưu câu hỏi vào database. Vui lòng thử lại.');
+        showToast('Không thể lưu câu hỏi. Vui lòng thử lại.', 'error');
         return;
       }
 
@@ -255,15 +259,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       newExercises.splice(insertAtIndex, 0, savedExercise);
       onUpdateLesson({ ...currentLesson, exercises: newExercises });
 
+      showToast('Đã thêm câu hỏi mới', 'success');
       setInsertAtIndex(null);
       setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
     } catch (err) {
       console.error('Error inserting exercise:', err);
-      alert('Có lỗi xảy ra khi lưu câu hỏi.');
+      showToast('Có lỗi xảy ra khi lưu câu hỏi.', 'error');
     } finally {
       setIsInsertingExercise(false);
     }
-  }, [viewingLessonId, lessons, newExercise, insertAtIndex, onUpdateLesson, isInsertingExercise]);
+  }, [viewingLessonId, lessons, newExercise, insertAtIndex, onUpdateLesson, isInsertingExercise, showToast]);
 
   const handleAddManualExercise = async () => {
     if (!viewingLessonId || !newExercise.vietnamese || isInsertingExercise) return;
@@ -281,7 +286,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       });
 
       if (!savedExercise) {
-        alert('Không thể lưu câu hỏi vào database. Vui lòng thử lại.');
+        showToast('Không thể lưu câu hỏi. Vui lòng thử lại.', 'error');
         return;
       }
 
@@ -291,10 +296,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         exercises: [...currentLesson.exercises, savedExercise]
       };
       onUpdateLesson(updatedLesson);
+      showToast('Đã thêm câu hỏi mới', 'success');
       setNewExercise({ type: 'translation', difficulty: 'Medium', vietnamese: '', hint: '' });
     } catch (err) {
       console.error('Error adding manual exercise:', err);
-      alert('Có lỗi xảy ra khi lưu câu hỏi.');
+      showToast('Có lỗi xảy ra khi lưu câu hỏi.', 'error');
     } finally {
       setIsInsertingExercise(false);
     }
@@ -302,10 +308,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleDeleteExercise = async (exerciseId: string) => {
     if (!viewingLessonId) return;
-    if (!confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) return;
 
     const currentLesson = lessons.find(l => l.id === viewingLessonId);
     if (!currentLesson) return;
+
+    // Store for potential rollback
+    const previousExercises = [...currentLesson.exercises];
 
     // Optimistically update UI
     const updatedLesson = {
@@ -319,10 +327,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!success) {
         throw new Error('Failed to delete');
       }
+      showToast('Đã xóa câu hỏi', 'success');
     } catch (err) {
       console.error(err);
-      alert('Không thể xóa câu hỏi. Vui lòng tải lại trang.');
-      // Revert if needed, but for now simple alert is safer than complex revert logic
+      // Rollback on failure
+      onUpdateLesson({ ...currentLesson, exercises: previousExercises });
+      showToast('Không thể xóa câu hỏi. Vui lòng thử lại.', 'error');
     }
   };
 
@@ -337,11 +347,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (success) {
         onUpdateLesson({ ...lessons.find(l => l.id === lessonId)!, ...updates });
         setEditingLesson(null);
+        showToast('Đã cập nhật bài học', 'success');
       } else {
-        alert('Không thể cập nhật bài học.');
+        showToast('Không thể cập nhật bài học.', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Có lỗi xảy ra khi cập nhật.', 'error');
     } finally {
       setIsUpdating(false);
     }
@@ -350,7 +362,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleUpdateExerciseContent = async (exerciseId: string, updates: Partial<Exercise>) => {
     // Input validation
     if (updates.vietnamese !== undefined && !updates.vietnamese.trim()) {
-      alert('Nội dung câu hỏi không được để trống.');
+      showToast('Nội dung câu hỏi không được để trống.', 'error');
       return;
     }
 
@@ -371,12 +383,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           onUpdateLesson({ ...targetLesson, exercises: updatedExercises });
         }
         setEditingExercise(null);
+        showToast('Đã cập nhật câu hỏi', 'success');
       } else {
-        alert('Không thể cập nhật câu hỏi.');
+        showToast('Không thể cập nhật câu hỏi.', 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('Có lỗi xảy ra khi cập nhật.');
+      showToast('Có lỗi xảy ra khi cập nhật.', 'error');
       // Rollback UI state on failure
       if (previousExercise && targetLesson) {
         const revertedExercises = targetLesson.exercises.map(ex =>
