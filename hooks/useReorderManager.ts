@@ -23,10 +23,10 @@ interface ReorderState {
     error: string | null;
 }
 
-// Configuration
-const DEBOUNCE_MS = 800;        // Wait 800ms after last change before saving
-const MAX_RETRIES = 2;          // Retry twice on transient failures
-const RETRY_DELAY_MS = 1000;    // Wait 1s between retries
+// Configuration - Simplified for atomic upsert (single request = more reliable)
+const DEBOUNCE_MS = 600;        // Wait 600ms after last change before saving (reduced from 800)
+const MAX_RETRIES = 1;          // Single retry (atomic upsert rarely fails)
+const RETRY_DELAY_MS = 500;     // Quick retry (reduced from 1000)
 
 /**
  * useReorderManager - Manages debounced batch updates for drag-and-drop reordering
