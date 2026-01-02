@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile as UserProfileType } from '../types';
-import { updateProfile } from '../services/authService';
+import { updateProfile, uploadAvatar } from '../services/authService';
 import { useToast } from './Toast';
 import { User, Camera, Save, Loader2, X } from 'lucide-react';
 
@@ -13,7 +13,9 @@ interface UserProfileProps {
 export const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate, onClose }) => {
     const [fullName, setFullName] = useState(profile.full_name);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const { showToast } = useToast();
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleSave = async () => {
         if (!fullName.trim() || fullName === profile.full_name) return;
@@ -30,6 +32,46 @@ export const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate, onC
         } finally {
             setIsUpdating(false);
         }
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validations
+        if (!file.type.startsWith('image/')) {
+            showToast('Vui lòng chọn file ảnh', 'error');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            showToast('Kích thước ảnh không được vượt quá 5MB', 'error');
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const publicUrl = await uploadAvatar(profile.id, file);
+            if (publicUrl) {
+                const updatedProfile = { ...profile, avatar_url: publicUrl };
+                onUpdate(updatedProfile);
+                showToast('Cập nhật ảnh đại diện thành công!', 'success');
+            } else {
+                showToast('Lỗi khi tải ảnh lên.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            showToast('Đã xảy ra lỗi không mong muốn.', 'error');
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
     };
 
     return (
@@ -49,12 +91,32 @@ export const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate, onC
                     {/* Avatar Section */}
                     <div className="flex flex-col items-center">
                         <div className="relative group">
-                            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-indigo-500/20">
-                                {profile.full_name.charAt(0).toUpperCase()}
-                            </div>
-                            <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg border border-slate-100 text-indigo-600 hover:text-indigo-700 transition-transform active:scale-95">
-                                <Camera size={16} />
+                            {profile.avatar_url ? (
+                                <img
+                                    src={profile.avatar_url}
+                                    alt={profile.full_name}
+                                    className="w-24 h-24 rounded-full object-cover shadow-xl shadow-indigo-500/20"
+                                />
+                            ) : (
+                                <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-indigo-500/20">
+                                    {profile.full_name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={triggerFileInput}
+                                disabled={isUploading}
+                                className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg border border-slate-100 text-indigo-600 hover:text-indigo-700 transition-transform active:scale-95 disabled:opacity-70"
+                            >
+                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
                             </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleFileChange}
+                            />
                         </div>
                     </div>
 

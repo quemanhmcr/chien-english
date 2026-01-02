@@ -999,8 +999,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         <div className="space-y-1 pt-6 border-t border-slate-800">
           <div className="px-4 py-4 bg-slate-800/50 rounded-xl mb-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-slate-900 font-semibold">
-              {profile?.full_name?.charAt(0).toUpperCase()}
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-white flex items-center justify-center text-slate-900 font-semibold">
+                  {profile?.full_name?.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             <div>
               <p className="text-sm font-medium text-white">{profile?.full_name}</p>
@@ -1085,9 +1091,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       recentActivity.map((act) => (
                         <div key={act.id} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-100">
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${act.score >= 80 ? 'bg-emerald-500' : act.score >= 50 ? 'bg-amber-500' : 'bg-rose-500'
-                              }`}>
-                              {act.profiles?.full_name?.charAt(0) || '?'}
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden ${act.score >= 80 ? 'bg-emerald-500' : act.score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}>
+                              {act.profiles?.avatar_url ? (
+                                <img src={act.profiles.avatar_url} alt={act.profiles.full_name} className="w-full h-full object-cover" />
+                              ) : (
+                                act.profiles?.full_name?.charAt(0) || '?'
+                              )}
                             </div>
                             <div>
                               <p className="font-bold text-slate-900 text-sm">{act.profiles?.full_name || 'Ẩn danh'}</p>
@@ -1379,8 +1388,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <tr key={student.id} className="hover:bg-indigo-50/30 transition-all group">
                           <td className="px-10 py-8">
                             <div className="flex items-center gap-6">
-                              <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[1.25rem] flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform duration-500">
-                                {student.full_name?.charAt(0).toUpperCase()}
+                              <div className="w-16 h-16 rounded-[1.25rem] flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform duration-500 overflow-hidden">
+                                {student.avatar_url ? (
+                                  <img src={student.avatar_url} alt={student.full_name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                                    {student.full_name?.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <p className="font-black text-xl text-slate-900 tracking-tight">{student.full_name}</p>
@@ -1483,8 +1498,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-white w-full md:w-[600px] h-[90vh] md:h-screen shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-10 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white font-black text-3xl shadow-2xl shadow-indigo-200">
-                  {selectedStudent.full_name?.charAt(0).toUpperCase()}
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-white font-black text-3xl shadow-2xl shadow-indigo-200 overflow-hidden">
+                  {selectedStudent.avatar_url ? (
+                    <img src={selectedStudent.avatar_url} alt={selectedStudent.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-indigo-600 flex items-center justify-center">
+                      {selectedStudent.full_name?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight">{selectedStudent.full_name}</h3>

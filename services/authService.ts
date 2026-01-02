@@ -226,3 +226,31 @@ export const updateGamificationStats = async (userId: string, xpGain: number) =>
         return null; // Fail silently to not block user flow
     }
 };
+
+export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}-${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, file);
+
+        if (uploadError) {
+            throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+
+        // Update profile with new avatar URL
+        await updateProfile(userId, { avatar_url: publicUrl });
+
+        return publicUrl;
+    } catch (error) {
+        console.error('Error uploading avatar:', error);
+        return null;
+    }
+};

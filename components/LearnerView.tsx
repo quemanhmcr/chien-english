@@ -327,9 +327,21 @@ export const LearnerView: React.FC<LearnerViewProps> = ({
                   onClick={onOpenProfile}
                   className="flex items-center gap-3 hover:bg-slate-50 p-1.5 pr-4 rounded-2xl transition-all border border-transparent hover:border-slate-200"
                 >
-                  <div className="w-9 h-9 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-semibold text-sm relative">
-                    {userProfile?.full_name?.charAt(0).toUpperCase()}
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-white" title="Level">
+                  <div className="w-9 h-9 relative">
+                    <div className="w-full h-full rounded-lg flex items-center justify-center overflow-hidden">
+                      {userProfile?.avatar_url ? (
+                        <img
+                          src={userProfile.avatar_url}
+                          alt={userProfile.full_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-indigo-500 flex items-center justify-center text-white font-semibold text-sm">
+                          {userProfile?.full_name?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-[9px] font-black text-white border-2 border-white z-20 shadow-md ring-1 ring-black/5" title="Level">
                       {userProfile?.level || 1}
                     </div>
                   </div>

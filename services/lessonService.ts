@@ -232,7 +232,7 @@ export const getAdminStats = async (options: FetchOptions = {}) => {
                 supabase.from('lessons').select('*', { count: 'exact', head: true }),
                 supabase.from('user_progress').select('id, score, completed_at, lesson_id, user_id'),
                 supabase.from('lessons').select('id, title'),
-                supabase.from('profiles').select('id, full_name, created_at')
+                supabase.from('profiles').select('id, full_name, created_at, avatar_url')
             ]);
 
             if (progressError) {
@@ -251,8 +251,8 @@ export const getAdminStats = async (options: FetchOptions = {}) => {
             }
 
             // Create lookup maps
-            const lessonMap = new Map((lessonsData || []).map(l => [l.id, l.title]));
-            const profileMap = new Map((profilesData || []).map(p => [p.id, p.full_name]));
+            const lessonMap = new Map<string, string>((lessonsData || []).map(l => [l.id, l.title]));
+            const profileMap = new Map<string, { name: string, avatar_url: string | null }>((profilesData || []).map(p => [p.id, { name: p.full_name, avatar_url: p.avatar_url || null }]));
 
             const now = new Date();
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -285,7 +285,7 @@ export const getAdminStats = async (options: FetchOptions = {}) => {
 
             // Lesson and user aggregations
             const lessonScores: Record<string, { title: string, total: number, count: number }> = {};
-            const userStats: Record<string, { name: string, completions: number, totalScore: number, lastActive: Date }> = {};
+            const userStats: Record<string, { name: string, avatar_url: string | null, completions: number, totalScore: number, lastActive: Date }> = {};
 
             (progressData || []).forEach(p => {
                 // Lessons
@@ -301,7 +301,14 @@ export const getAdminStats = async (options: FetchOptions = {}) => {
                 if (p.user_id) {
                     const actDate = new Date(p.completed_at);
                     if (!userStats[p.user_id]) {
-                        userStats[p.user_id] = { name: profileMap.get(p.user_id) || 'User', completions: 0, totalScore: 0, lastActive: actDate };
+                        const profile = profileMap.get(p.user_id);
+                        userStats[p.user_id] = {
+                            name: profile?.name || 'User',
+                            avatar_url: profile?.avatar_url || null,
+                            completions: 0,
+                            totalScore: 0,
+                            lastActive: actDate
+                        };
                     }
                     userStats[p.user_id].completions += 1;
                     userStats[p.user_id].totalScore += p.score;
@@ -323,6 +330,7 @@ export const getAdminStats = async (options: FetchOptions = {}) => {
                 .map(([id, data]) => ({
                     id,
                     full_name: data.name,
+                    avatar_url: data.avatar_url,
                     completions: data.completions,
                     avgScore: Math.round(data.totalScore / data.completions)
                 }))
@@ -391,17 +399,16 @@ export const getRecentActivity = async (options: FetchOptions = {}) => {
             // Fetch lessons and profiles
             const [lessonsRes, profilesRes] = await Promise.all([
                 supabase.from('lessons').select('id, title').in('id', lessonIds),
-                supabase.from('profiles').select('id, full_name').in('id', userIds)
+                supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
             ]);
 
-            const lessonMap = new Map((lessonsRes.data || []).map(l => [l.id, l.title]));
-            const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p.full_name]));
+            const lessonMap = new Map<string, string>((lessonsRes.data || []).map(l => [l.id, l.title]));
+            const profileMap = new Map<string, { full_name: string, avatar_url: string | null }>((profilesRes.data || []).map(p => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url || null }]));
 
-            // Merge data
             return progressData.map(p => ({
                 ...p,
                 lessons: { title: lessonMap.get(p.lesson_id) || 'Unknown' },
-                profiles: { full_name: profileMap.get(p.user_id) || 'User' }
+                profiles: profileMap.get(p.user_id) || { full_name: 'User', avatar_url: null }
             }));
         },
         { ttl: 60 * 1000, forceRefresh: forceRefresh || !useCache } // 1 minute cache for recent activity
